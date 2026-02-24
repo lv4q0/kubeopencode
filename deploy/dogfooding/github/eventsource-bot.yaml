@@ -23,11 +23,9 @@ spec:
         port: "12000"
         method: POST
       # Events to listen for
+      # Only pull_request is needed: PR opened (auto review) + review_requested
       events:
         - pull_request
-        - issue_comment
-        - pull_request_review_comment
-        - discussion_comment
       # Webhook secret for HMAC validation (X-Hub-Signature-256)
       webhookSecret:
         name: github-webhook-secret
