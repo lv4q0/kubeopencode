@@ -256,6 +256,14 @@ echo "$QUAY_TOKEN" | helm registry login quay.io -u $QUAY_ROBOT_ACCOUNT --passwo
 | `.github/workflows/release.yaml` | Release workflow triggered by `v*` tags |
 | `CLAUDE.md` | Project status version |
 
+## CRD Change Reminder
+
+> **IMPORTANT FOR AI ASSISTANTS**: When a release includes **any** CRD changes (added/removed/modified fields in `api/v1alpha1/`), you **must**:
+> 1. Mention this prominently in the release notes under "Breaking Changes" or "New Features"
+> 2. Remind the user that `helm upgrade` does **not** update CRDs automatically
+> 3. Point the user to the [Upgrade SOP](upgrading.md) for manual CRD update instructions
+> 4. Update the "Version History with CRD Changes" table in `docs/upgrading.md`
+
 ## Notes
 
 - The `DefaultKubeOpenCodeImage` in `internal/controller/pod_builder.go` stays as `:latest` intentionally. Users who want pinned versions configure it via `KubeOpenCodeConfig.spec.systemImage`.

@@ -797,6 +797,7 @@ The controller requires permissions for:
 | `charts/kubeopencode/README.md` | Helm chart deployment and configuration | Helm values changes |
 | `agents/README.md` | Building custom agent images | Agent development changes |
 | `docs/releasing.md` | Release SOP — step-by-step guide for creating a new release | Release process changes |
+| `docs/upgrading.md` | Upgrade SOP — step-by-step guide for upgrading KubeOpenCode on a cluster | Upgrade process changes, CRD change tracking |
 | `docs/adr/` | Architecture Decision Records | Significant architectural decisions |
 
 ### Updating Documentation
