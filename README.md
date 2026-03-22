@@ -15,9 +15,15 @@
 
 ## Demo
 
-<p align="center">
-  <img src="docs/images/kubeopencode-demo.gif" alt="KubeOpenCode Demo" width="800">
-</p>
+### Dashboard (Web UI)
+
+<video src="https://github.com/kubeopencode/kubeopencode/raw/main/docs/images/koc-gui.mp4" controls width="800"></video>
+
+### CLI (TUI Skills)
+
+<video src="https://github.com/kubeopencode/kubeopencode/raw/main/docs/images/koc-tui.mp4" controls width="800"></video>
+
+> **Skills**: Manage KubeOpenCode resources (Tasks, Agents) directly from your terminal using AI-powered skills. See [kubeopencode/skills](https://github.com/kubeopencode/skills) for the full collection.
 
 ## Overview
 
