@@ -30,8 +30,8 @@ function DashboardPage() {
   };
 
   const statCards = [
-    { label: 'Total', value: taskStats.total, color: 'bg-stone-50 border-stone-200 text-stone-700', accent: 'text-stone-900' },
-    { label: 'Running', value: taskStats.running, color: 'bg-sky-50/80 border-sky-200 text-sky-700', accent: 'text-sky-900' },
+    { label: 'Total', value: taskStats.total, color: 'bg-slate-50 border-slate-200 text-slate-700', accent: 'text-slate-900' },
+    { label: 'Running', value: taskStats.running, color: 'bg-primary-50/80 border-primary-200 text-primary-700', accent: 'text-primary-900' },
     { label: 'Queued', value: taskStats.queued, color: 'bg-amber-50/80 border-amber-200 text-amber-700', accent: 'text-amber-900' },
     { label: 'Completed', value: taskStats.completed, color: 'bg-emerald-50/80 border-emerald-200 text-emerald-700', accent: 'text-emerald-900' },
     { label: 'Failed', value: taskStats.failed, color: 'bg-red-50/80 border-red-200 text-red-700', accent: 'text-red-900' },
@@ -48,7 +48,7 @@ function DashboardPage() {
         </div>
         <Link
           to="/tasks/create"
-          className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-stone-900 rounded-lg hover:bg-stone-800 transition-colors shadow-sm"
+          className="inline-flex items-center gap-2 px-4 py-2.5 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors shadow-sm"
         >
           <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M12 5v14M5 12h14" strokeLinecap="round" />

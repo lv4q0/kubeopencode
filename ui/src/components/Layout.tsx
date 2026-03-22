@@ -6,12 +6,22 @@ import StatusBadge from './StatusBadge';
 import TimeAgo from './TimeAgo';
 import ToastContainer from './ToastContainer';
 
+function useServerVersion() {
+  const { data } = useQuery({
+    queryKey: ['server-info'],
+    queryFn: () => api.getInfo(),
+    staleTime: 5 * 60 * 1000,
+  });
+  return data?.version || '';
+}
+
 function Layout() {
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [tasksExpanded, setTasksExpanded] = useState(true);
   const [agentsExpanded, setAgentsExpanded] = useState(true);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const location = useLocation();
+  const serverVersion = useServerVersion();
 
   const { data: tasksData } = useQuery({
     queryKey: ['sidebar-tasks'],
@@ -58,7 +68,7 @@ function Layout() {
       <div className="px-3 pt-3 pb-1 flex-shrink-0">
         <Link
           to="/tasks/create"
-          className="flex items-center gap-2 w-full px-3 py-2.5 rounded-lg bg-sidebar-hover border border-sidebar-border/60 text-sidebar-text hover:bg-stone-700/50 hover:border-sidebar-border transition-all text-sm font-medium group"
+          className="flex items-center gap-2 w-full px-3 py-2.5 rounded-lg bg-sidebar-hover border border-sidebar-border/60 text-sidebar-text hover:bg-primary-600/20 hover:border-primary-500/40 transition-all text-sm font-medium group"
         >
           <svg className="w-4 h-4 text-sidebar-muted group-hover:text-primary-400 transition-colors" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path d="M12 5v14M5 12h14" strokeLinecap="round" />
@@ -98,10 +108,10 @@ function Layout() {
             <div className="flex items-center gap-2">
               <span>Tasks</span>
               {runningCount > 0 && (
-                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-sky-500/20 text-sky-400 text-[10px] font-semibold normal-case tracking-normal">
+                <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-primary-500/20 text-primary-300 text-[10px] font-semibold normal-case tracking-normal">
                   <span className="relative flex h-1.5 w-1.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-sky-400" />
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-primary-400" />
                   </span>
                   {runningCount}
                 </span>
@@ -138,12 +148,12 @@ function Layout() {
                   >
                     <TaskStatusDot phase={task.phase} />
                     <div className="flex-1 min-w-0">
-                      <p className="truncate text-[13px]">{task.name}</p>
-                      <p className="text-[10px] text-sidebar-muted/60 truncate">
+                      <p className="truncate text-[13px] font-medium">{task.name}</p>
+                      <p className="text-[10px] text-sidebar-muted/80 truncate">
                         {task.namespace}
                       </p>
                     </div>
-                    <span className="text-[10px] text-sidebar-muted/40 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
+                    <span className="text-[10px] text-sidebar-muted/50 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">
                       <TimeAgo date={task.createdAt} />
                     </span>
                   </NavLink>
@@ -204,12 +214,12 @@ function Layout() {
                       }`
                     }
                   >
-                    <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                      agent.mode === 'Server' ? 'bg-violet-400' : 'bg-stone-500'
+                    <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${
+                      agent.mode === 'Server' ? 'bg-violet-400' : 'bg-primary-400/60'
                     }`} />
                     <div className="flex-1 min-w-0">
-                      <p className="truncate text-[13px]">{agent.name}</p>
-                      <p className="text-[10px] text-sidebar-muted/60 truncate">
+                      <p className="truncate text-[13px] font-medium">{agent.name}</p>
+                      <p className="text-[10px] text-sidebar-muted/80 truncate">
                         {agent.namespace}
                       </p>
                     </div>
@@ -240,7 +250,7 @@ function Layout() {
       <div className="px-4 py-3 border-t border-sidebar-border/30 flex-shrink-0">
         <div className="flex items-center gap-2 text-[11px] text-sidebar-muted/50">
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-          <span className="font-display">v0.0.4</span>
+          <span className="font-display">{serverVersion}</span>
         </div>
       </div>
     </div>
@@ -334,7 +344,7 @@ function Layout() {
             </NavLink>
 
             <div className="flex-1" />
-            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mb-2" title="v0.0.4" />
+            <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mb-2" title={serverVersion} />
           </div>
         )}
       </aside>
@@ -342,10 +352,10 @@ function Layout() {
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top bar - mobile only + breadcrumb area */}
-        <header className="h-14 flex items-center justify-between px-4 lg:px-6 border-b border-stone-200/80 bg-white/60 backdrop-blur-sm flex-shrink-0">
+        <header className="h-14 flex items-center justify-between px-4 lg:px-6 border-b border-slate-200/80 bg-white/60 backdrop-blur-sm flex-shrink-0">
           <button
             onClick={() => setMobileSidebarOpen(true)}
-            className="lg:hidden flex items-center justify-center w-8 h-8 rounded-lg text-stone-500 hover:text-stone-800 hover:bg-stone-100 transition-colors"
+            className="lg:hidden flex items-center justify-center w-8 h-8 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M4 6h16M4 12h16M4 18h16" strokeLinecap="round" />
@@ -353,12 +363,12 @@ function Layout() {
           </button>
           <div className="flex-1" />
           {runningCount > 0 && (
-            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-sky-50 border border-sky-100">
+            <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary-50 border border-primary-100">
               <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-sky-500" />
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-primary-500" />
               </span>
-              <span className="text-xs font-medium text-sky-700">
+              <span className="text-xs font-medium text-primary-700">
                 {runningCount} running
               </span>
             </div>
@@ -381,11 +391,11 @@ function Layout() {
 function TaskStatusDot({ phase }: { phase: string }) {
   const lower = phase?.toLowerCase() || 'pending';
   const colorMap: Record<string, string> = {
-    running: 'bg-sky-400',
+    running: 'bg-primary-400',
     completed: 'bg-emerald-400',
     failed: 'bg-red-400',
     queued: 'bg-amber-400',
-    pending: 'bg-stone-500',
+    pending: 'bg-slate-500',
   };
   const color = colorMap[lower] || 'bg-stone-500';
   const isAnimated = lower === 'running' || lower === 'queued';

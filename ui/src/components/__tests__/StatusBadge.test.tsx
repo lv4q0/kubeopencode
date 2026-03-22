@@ -9,9 +9,9 @@ describe('StatusBadge', () => {
   });
 
   it.each([
-    ['Pending', 'bg-stone-50'],
+    ['Pending', 'bg-slate-50'],
     ['Queued', 'bg-amber-50'],
-    ['Running', 'bg-sky-50'],
+    ['Running', 'bg-primary-50'],
     ['Completed', 'bg-emerald-50'],
     ['Failed', 'bg-red-50'],
   ])('applies correct background class for %s phase', (phase, expectedClass) => {
@@ -24,7 +24,7 @@ describe('StatusBadge', () => {
     const { container } = render(<StatusBadge phase="Running" />);
     const animatedDot = container.querySelector('.animate-ping');
     expect(animatedDot).toBeInTheDocument();
-    expect(animatedDot?.className).toContain('bg-sky-400');
+    expect(animatedDot?.className).toContain('bg-primary-400');
   });
 
   it('shows animated dot for Queued phase', () => {
@@ -46,12 +46,12 @@ describe('StatusBadge', () => {
   it('handles case-insensitive phases', () => {
     render(<StatusBadge phase="running" />);
     const badge = screen.getByText('running');
-    expect(badge.className).toContain('bg-sky-50');
+    expect(badge.className).toContain('bg-primary-50');
   });
 
   it('uses default style for unknown phases', () => {
     render(<StatusBadge phase="Unknown" />);
     const badge = screen.getByText('Unknown');
-    expect(badge.className).toContain('bg-stone-50');
+    expect(badge.className).toContain('bg-slate-50');
   });
 });

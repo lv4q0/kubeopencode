@@ -8,9 +8,9 @@ function StatusBadge({ phase }: StatusBadgeProps) {
   const lowerPhase = phase.toLowerCase();
 
   const styles: Record<string, { bg: string; text: string; dot: string; border: string }> = {
-    pending: { bg: 'bg-stone-50', text: 'text-stone-600', dot: 'bg-stone-400', border: 'border-stone-200' },
+    pending: { bg: 'bg-slate-50', text: 'text-slate-600', dot: 'bg-slate-400', border: 'border-slate-200' },
     queued: { bg: 'bg-amber-50', text: 'text-amber-700', dot: 'bg-amber-400', border: 'border-amber-200' },
-    running: { bg: 'bg-sky-50', text: 'text-sky-700', dot: 'bg-sky-400', border: 'border-sky-200' },
+    running: { bg: 'bg-primary-50', text: 'text-primary-700', dot: 'bg-primary-400', border: 'border-primary-200' },
     completed: { bg: 'bg-emerald-50', text: 'text-emerald-700', dot: 'bg-emerald-400', border: 'border-emerald-200' },
     failed: { bg: 'bg-red-50', text: 'text-red-700', dot: 'bg-red-400', border: 'border-red-200' },
   };
