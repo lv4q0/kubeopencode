@@ -40,12 +40,8 @@ func NewTaskHandler(c client.Client, clientset kubernetes.Interface, restConfig 
 	}
 }
 
-// getClient returns the client from context or falls back to default
 func (h *TaskHandler) getClient(ctx context.Context) client.Client {
-	if c, ok := ctx.Value(clientContextKey{}).(client.Client); ok && c != nil {
-		return c
-	}
-	return h.defaultClient
+	return clientFromContext(ctx, h.defaultClient)
 }
 
 // ListAll returns all tasks across all namespaces with filtering and pagination

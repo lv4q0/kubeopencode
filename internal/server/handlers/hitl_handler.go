@@ -38,12 +38,8 @@ func NewHITLHandler(c client.Client) *HITLHandler {
 	}
 }
 
-// getClient returns the client from context or falls back to default
 func (h *HITLHandler) getClient(ctx context.Context) client.Client {
-	if c, ok := ctx.Value(clientContextKey{}).(client.Client); ok && c != nil {
-		return c
-	}
-	return h.defaultClient
+	return clientFromContext(ctx, h.defaultClient)
 }
 
 // getServerURL resolves the OpenCode server URL for a Task's Agent.

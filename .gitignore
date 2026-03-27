@@ -21,6 +21,10 @@ node_modules/
 ui/dist/
 ui/coverage/
 
+# OpenCode Web UI (self-hosted build artifacts)
+internal/opencode-app/dist/
+!internal/opencode-app/dist/.gitkeep
+
 # Override global gitignore to track CLAUDE.md and skills
 !CLAUDE.md
 !.claude/skills/

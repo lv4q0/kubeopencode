@@ -4,12 +4,16 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
+	"fmt"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
 
+	kubeopenv1alpha1 "github.com/kubeopencode/kubeopencode/api/v1alpha1"
 	"github.com/kubeopencode/kubeopencode/internal/server/types"
 )
 
@@ -27,6 +31,44 @@ func writeError(w http.ResponseWriter, status int, err string, message string) {
 		Message: message,
 		Code:    status,
 	})
+}
+
+// clientFromContext returns the impersonated client from context or falls back to the default.
+func clientFromContext(ctx context.Context, defaultClient client.Client) client.Client {
+	if c, ok := ctx.Value(ClientContextKey{}).(client.Client); ok && c != nil {
+		return c
+	}
+	return defaultClient
+}
+
+// resolveAgentServerURL looks up the Agent CR and returns its in-cluster server URL.
+func resolveAgentServerURL(ctx context.Context, k8sClient client.Client, namespace, agentName string) (string, error) {
+	var agent kubeopenv1alpha1.Agent
+	if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: namespace, Name: agentName}, &agent); err != nil {
+		return "", fmt.Errorf("agent not found: %w", err)
+	}
+
+	if agent.Spec.ServerConfig == nil {
+		return "", fmt.Errorf("agent %q is not in Server mode (no serverConfig)", agentName)
+	}
+
+	if agent.Status.ServerStatus == nil || agent.Status.ServerStatus.URL == "" {
+		return "", fmt.Errorf("agent %q server is not ready (no server URL in status)", agentName)
+	}
+
+	return agent.Status.ServerStatus.URL, nil
+}
+
+// normalizeProxyPath extracts and normalizes the wildcard path suffix from a chi route.
+func normalizeProxyPath(r *http.Request) string {
+	path := chi.URLParam(r, "*")
+	if path == "" {
+		return "/"
+	}
+	if path[0] != '/' {
+		return "/" + path
+	}
+	return path
 }
 
 // writeResourceOutput writes a Kubernetes resource as JSON or YAML depending on the output query parameter

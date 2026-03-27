@@ -209,6 +209,13 @@ func (s *Server) setupRoutes() *chi.Mux {
 				r.HandleFunc("/*", agentProxyHandler.ServeProxy)
 				r.HandleFunc("/", agentProxyHandler.ServeProxy)
 			})
+
+			// Agent web UI - serves OpenCode Web UI through proxy with URL rewriting
+			agentWebHandler := handlers.NewAgentWebHandler(s.k8sClient)
+			r.Route("/{name}/web", func(r chi.Router) {
+				r.HandleFunc("/*", agentWebHandler.ServeWeb)
+				r.HandleFunc("/", agentWebHandler.ServeWeb)
+			})
 		})
 
 	})
@@ -258,9 +265,6 @@ func writeHealthJSON(w http.ResponseWriter, status int, data servertypes.HealthR
 	_ = json.NewEncoder(w).Encode(data)
 }
 
-// clientContextKey is the context key for the impersonated client
-type clientContextKey struct{}
-
 // impersonationMiddleware creates an impersonated client based on user info
 func (s *Server) impersonationMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -268,7 +272,7 @@ func (s *Server) impersonationMiddleware(next http.Handler) http.Handler {
 
 		// If no user info (auth disabled or anonymous allowed), use default client
 		if userInfo == nil {
-			ctx := context.WithValue(r.Context(), clientContextKey{}, s.k8sClient)
+			ctx := context.WithValue(r.Context(), handlers.ClientContextKey{}, s.k8sClient)
 			next.ServeHTTP(w, r.WithContext(ctx))
 			return
 		}
@@ -289,7 +293,7 @@ func (s *Server) impersonationMiddleware(next http.Handler) http.Handler {
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), clientContextKey{}, impersonatedClient)
+		ctx := context.WithValue(r.Context(), handlers.ClientContextKey{}, impersonatedClient)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -347,7 +351,7 @@ func corsMiddleware(allowedOrigins []string) func(http.Handler) http.Handler {
 
 // GetClientFromContext retrieves the Kubernetes client from the request context
 func GetClientFromContext(ctx context.Context) client.Client {
-	if c, ok := ctx.Value(clientContextKey{}).(client.Client); ok {
+	if c, ok := ctx.Value(handlers.ClientContextKey{}).(client.Client); ok {
 		return c
 	}
 	return nil

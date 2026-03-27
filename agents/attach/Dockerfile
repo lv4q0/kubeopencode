@@ -13,7 +13,7 @@
 # - devbox: ~1GB (Go, Node, Python, cloud CLIs, dev tools)
 # - attach: ~150MB (Debian slim + OpenCode binary)
 #
-FROM debian:bookworm-slim
+FROM debian:bookworm-20260316-slim
 
 # CA certificates for HTTPS connections to OpenCode server and AI APIs
 RUN apt-get update && apt-get install -y --no-install-recommends \

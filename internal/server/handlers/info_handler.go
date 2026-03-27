@@ -26,12 +26,8 @@ func NewInfoHandler(c client.Client) *InfoHandler {
 	return &InfoHandler{defaultClient: c}
 }
 
-// getClient returns the client from context or falls back to default
 func (h *InfoHandler) getClient(ctx context.Context) client.Client {
-	if c, ok := ctx.Value(clientContextKey{}).(client.Client); ok && c != nil {
-		return c
-	}
-	return h.defaultClient
+	return clientFromContext(ctx, h.defaultClient)
 }
 
 // GetInfo returns server information

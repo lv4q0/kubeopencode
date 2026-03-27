@@ -15,8 +15,10 @@ import (
 	"github.com/kubeopencode/kubeopencode/internal/server/types"
 )
 
-// clientContextKey is the context key for the impersonated client
-type clientContextKey struct{}
+// ClientContextKey is the context key for the impersonated Kubernetes client.
+// It is used by the impersonation middleware in the server package to store
+// the per-request client, and by all handlers to retrieve it.
+type ClientContextKey struct{}
 
 // AgentHandler handles agent-related HTTP requests
 type AgentHandler struct {
@@ -28,12 +30,8 @@ func NewAgentHandler(c client.Client) *AgentHandler {
 	return &AgentHandler{defaultClient: c}
 }
 
-// getClient returns the client from context or falls back to default
 func (h *AgentHandler) getClient(ctx context.Context) client.Client {
-	if c, ok := ctx.Value(clientContextKey{}).(client.Client); ok && c != nil {
-		return c
-	}
-	return h.defaultClient
+	return clientFromContext(ctx, h.defaultClient)
 }
 
 // ListAll returns all agents across all namespaces with filtering and pagination

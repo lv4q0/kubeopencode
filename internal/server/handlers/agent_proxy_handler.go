@@ -4,7 +4,6 @@ package handlers
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -12,8 +11,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-
-	kubeopenv1alpha1 "github.com/kubeopencode/kubeopencode/api/v1alpha1"
 )
 
 var proxyLog = ctrl.Log.WithName("agent-proxy")
@@ -30,35 +27,6 @@ func NewAgentProxyHandler(c client.Client) *AgentProxyHandler {
 	return &AgentProxyHandler{defaultClient: c}
 }
 
-// getClient returns the impersonated client from context or falls back to default
-func (h *AgentProxyHandler) getClient(ctx context.Context) client.Client {
-	if c, ok := ctx.Value(clientContextKey{}).(client.Client); ok && c != nil {
-		return c
-	}
-	return h.defaultClient
-}
-
-// resolveAgentServerURL looks up the Agent CR and returns its in-cluster server URL.
-// This uses the impersonated client, so RBAC is enforced automatically.
-func (h *AgentProxyHandler) resolveAgentServerURL(ctx context.Context, namespace, agentName string) (string, error) {
-	k8sClient := h.getClient(ctx)
-
-	var agent kubeopenv1alpha1.Agent
-	if err := k8sClient.Get(ctx, client.ObjectKey{Namespace: namespace, Name: agentName}, &agent); err != nil {
-		return "", fmt.Errorf("agent not found: %w", err)
-	}
-
-	if agent.Spec.ServerConfig == nil {
-		return "", fmt.Errorf("agent %q is not in Server mode (no serverConfig)", agentName)
-	}
-
-	if agent.Status.ServerStatus == nil || agent.Status.ServerStatus.URL == "" {
-		return "", fmt.Errorf("agent %q server is not ready (no server URL in status)", agentName)
-	}
-
-	return agent.Status.ServerStatus.URL, nil
-}
-
 // ServeProxy is the catch-all handler for /api/v1/namespaces/{namespace}/agents/{name}/proxy/*
 // It resolves the Agent's server URL, rewrites the request path, and proxies via httputil.ReverseProxy.
 func (h *AgentProxyHandler) ServeProxy(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +38,8 @@ func (h *AgentProxyHandler) ServeProxy(w http.ResponseWriter, r *http.Request) {
 	// The proxy will still terminate when the client disconnects (write errors).
 	ctx := context.WithoutCancel(r.Context())
 
-	serverURL, err := h.resolveAgentServerURL(ctx, namespace, agentName)
+	k8sClient := clientFromContext(ctx, h.defaultClient)
+	serverURL, err := resolveAgentServerURL(ctx, k8sClient, namespace, agentName)
 	if err != nil {
 		proxyLog.Error(err, "Failed to resolve agent server URL", "namespace", namespace, "agent", agentName)
 		writeError(w, http.StatusBadGateway, "Cannot resolve agent server", err.Error())
@@ -83,13 +52,7 @@ func (h *AgentProxyHandler) ServeProxy(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Extract the wildcard path suffix from chi route
-	proxyPath := chi.URLParam(r, "*")
-	if proxyPath == "" {
-		proxyPath = "/"
-	} else if proxyPath[0] != '/' {
-		proxyPath = "/" + proxyPath
-	}
+	proxyPath := normalizeProxyPath(r)
 
 	proxy := &httputil.ReverseProxy{
 		Director: func(req *http.Request) {

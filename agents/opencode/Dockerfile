@@ -35,7 +35,7 @@
 #   Example: docker build --build-arg OPENCODE_VERSION=1.1.60 -t opencode .
 #
 
-FROM debian:bookworm-slim
+FROM debian:bookworm-20260316-slim
 
 # OpenCode version to download (use specific version to avoid cache issues)
 # Override with: --build-arg OPENCODE_VERSION=x.y.z
