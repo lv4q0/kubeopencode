@@ -253,7 +253,7 @@ execution in real-time.
 ### Prerequisites
 
 - Agent must be configured in **Server mode** (`serverConfig` is set)
-- Agent's OpenCode server must be running (`Agent.status.serverStatus.readyReplicas > 0`)
+- Agent's OpenCode server must be running (`Agent.status.serverStatus.ready: true`)
 
 ### Direct Access via OpenCode TUI
 
