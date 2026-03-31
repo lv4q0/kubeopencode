@@ -41,7 +41,103 @@ func newAgentCmd() *cobra.Command {
 		Short: "Interact with KubeOpenCode agents",
 	}
 	cmd.AddCommand(newAgentAttachCmd())
+	cmd.AddCommand(newAgentSuspendCmd())
+	cmd.AddCommand(newAgentResumeCmd())
 	return cmd
+}
+
+func newAgentSuspendCmd() *cobra.Command {
+	var namespace string
+
+	cmd := &cobra.Command{
+		Use:   "suspend <agent-name>",
+		Short: "Suspend a server-mode agent",
+		Long: `Suspend a server-mode agent by scaling its deployment to 0 replicas.
+
+PVCs and Service are retained, so the agent can be resumed without data loss.
+Tasks targeting a suspended agent enter Queued phase until the agent is resumed.
+
+Examples:
+  kubeoc agent suspend my-agent -n test`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return setSuspendState(cmd.Context(), namespace, args[0], true)
+		},
+	}
+
+	cmd.Flags().StringVarP(&namespace, "namespace", "n", "default", "Agent namespace")
+	return cmd
+}
+
+func newAgentResumeCmd() *cobra.Command {
+	var namespace string
+
+	cmd := &cobra.Command{
+		Use:   "resume <agent-name>",
+		Short: "Resume a suspended server-mode agent",
+		Long: `Resume a suspended server-mode agent by scaling its deployment back to 1 replica.
+
+Queued tasks will automatically start running once the agent is ready.
+
+Examples:
+  kubeoc agent resume my-agent -n test`,
+		Args: cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return setSuspendState(cmd.Context(), namespace, args[0], false)
+		},
+	}
+
+	cmd.Flags().StringVarP(&namespace, "namespace", "n", "default", "Agent namespace")
+	return cmd
+}
+
+func setSuspendState(ctx context.Context, namespace, agentName string, suspend bool) error {
+	cfg, err := getKubeConfig()
+	if err != nil {
+		return fmt.Errorf("cannot connect to cluster: %w", err)
+	}
+
+	k8sClient, err := client.New(cfg, client.Options{Scheme: scheme})
+	if err != nil {
+		return fmt.Errorf("failed to create kubernetes client: %w", err)
+	}
+
+	var agent kubeopenv1alpha1.Agent
+	if err := k8sClient.Get(ctx, types.NamespacedName{
+		Name:      agentName,
+		Namespace: namespace,
+	}, &agent); err != nil {
+		return fmt.Errorf("agent %q not found in namespace %q: %w", agentName, namespace, err)
+	}
+
+	if !controller.IsServerMode(&agent) {
+		return fmt.Errorf("agent %q is not in Server mode (no serverConfig)\n  Only server-mode agents support suspend/resume", agentName)
+	}
+
+	if agent.Spec.ServerConfig.Suspend == suspend {
+		if suspend {
+			fmt.Printf("Agent %s/%s is already suspended\n", namespace, agentName)
+		} else {
+			fmt.Printf("Agent %s/%s is already running\n", namespace, agentName)
+		}
+		return nil
+	}
+
+	agent.Spec.ServerConfig.Suspend = suspend
+	if err := k8sClient.Update(ctx, &agent); err != nil {
+		action := "suspend"
+		if !suspend {
+			action = "resume"
+		}
+		return fmt.Errorf("failed to %s agent %q: %w", action, agentName, err)
+	}
+
+	if suspend {
+		fmt.Printf("Agent %s/%s suspended\n", namespace, agentName)
+	} else {
+		fmt.Printf("Agent %s/%s resumed\n", namespace, agentName)
+	}
+	return nil
 }
 
 func newAgentAttachCmd() *cobra.Command {

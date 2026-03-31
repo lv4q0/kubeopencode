@@ -23,22 +23,28 @@ func newGetCmd() *cobra.Command {
 		Short: "Display KubeOpenCode resources",
 	}
 	cmd.AddCommand(newGetAgentsCmd())
+	cmd.AddCommand(newGetAgentTemplatesCmd())
+	cmd.AddCommand(newGetTasksCmd())
 	return cmd
 }
 
 func newGetAgentsCmd() *cobra.Command {
-	var namespace string
+	var (
+		namespace string
+		wide      bool
+	)
 
 	cmd := &cobra.Command{
 		Use:   "agents",
 		Short: "List available agents",
 		Long: `List agents across all namespaces (or a specific namespace with -n).
 
-Displays each agent's namespace, name, profile, mode (Server/Pod), and status.
+Use -o wide to show additional columns (profile, template).
 
 Examples:
-  kubeopencode get agents
-  kubeopencode get agents -n production`,
+  kubeoc get agents
+  kubeoc get agents -n production
+  kubeoc get agents -o wide`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			cfg, err := getKubeConfig()
 			if err != nil {
@@ -70,7 +76,11 @@ Examples:
 			}
 
 			w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-			fmt.Fprintln(w, "NAMESPACE\tNAME\tPROFILE\tMODE\tSTATUS")
+			if wide {
+				fmt.Fprintln(w, "NAMESPACE\tNAME\tMODE\tSTATUS\tPROFILE\tTEMPLATE")
+			} else {
+				fmt.Fprintln(w, "NAMESPACE\tNAME\tMODE\tSTATUS")
+			}
 
 			for _, agent := range agents.Items {
 				mode := "Pod"
@@ -78,20 +88,33 @@ Examples:
 
 				if agent.Spec.ServerConfig != nil {
 					mode = "Server"
-					if agent.Status.ServerStatus != nil && agent.Status.ServerStatus.Ready {
+					switch {
+					case agent.Status.ServerStatus != nil && agent.Status.ServerStatus.Suspended:
+						status = "Suspended"
+					case agent.Status.ServerStatus != nil && agent.Status.ServerStatus.Ready:
 						status = "Ready"
-					} else {
+					default:
 						status = "Not Ready"
 					}
 				}
 
-				profile := agent.Spec.Profile
-				if len(profile) > 60 {
-					profile = profile[:57] + "..."
-				}
+				if wide {
+					profile := agent.Spec.Profile
+					if len(profile) > 50 {
+						profile = profile[:47] + "..."
+					}
 
-				fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\n",
-					agent.Namespace, agent.Name, profile, mode, status)
+					template := "-"
+					if agent.Spec.TemplateRef != nil {
+						template = agent.Spec.TemplateRef.Name
+					}
+
+					fmt.Fprintf(w, "%s\t%s\t%s\t%s\t%s\t%s\n",
+						agent.Namespace, agent.Name, mode, status, profile, template)
+				} else {
+					fmt.Fprintf(w, "%s\t%s\t%s\t%s\n",
+						agent.Namespace, agent.Name, mode, status)
+				}
 			}
 
 			w.Flush()
@@ -100,6 +123,7 @@ Examples:
 	}
 
 	cmd.Flags().StringVarP(&namespace, "namespace", "n", "", "Filter by namespace (default: all namespaces)")
+	cmd.Flags().BoolVar(&wide, "wide", false, "Show additional columns (profile, template)")
 
 	return cmd
 }
