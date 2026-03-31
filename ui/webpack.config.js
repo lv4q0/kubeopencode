@@ -1,5 +1,8 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
+const webpack = require('webpack');
+
+const isMockApi = process.env.MOCK_API === 'true';
 
 module.exports = {
   entry: './src/index.tsx',
@@ -37,18 +40,26 @@ module.exports = {
       template: './src/index.html',
       favicon: false,
     }),
+    new webpack.DefinePlugin({
+      MOCK_API: JSON.stringify(isMockApi),
+    }),
   ],
   devServer: {
     historyApiFallback: true,
     port: 8080,
     hot: true,
-    proxy: [
-      {
-        context: ['/api', '/health', '/ready'],
-        target: 'http://localhost:2746',
-        changeOrigin: true,
-        ws: true,
-      },
-    ],
+    static: {
+      directory: path.join(__dirname, 'public'),
+    },
+    ...(isMockApi ? {} : {
+      proxy: [
+        {
+          context: ['/api', '/health', '/ready'],
+          target: 'http://localhost:2746',
+          changeOrigin: true,
+          ws: true,
+        },
+      ],
+    }),
   },
 };

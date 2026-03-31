@@ -12,7 +12,7 @@ describe('ResourceFilter', () => {
   it('renders name and label input fields', () => {
     render(<ResourceFilter {...defaultProps} />);
     expect(screen.getByPlaceholderText('Filter by name...')).toBeInTheDocument();
-    expect(screen.getByPlaceholderText('Label filter (e.g. app=myapp)')).toBeInTheDocument();
+    expect(screen.getByPlaceholderText('Label selector (e.g. app=myapp)')).toBeInTheDocument();
   });
 
   it('uses custom placeholder', () => {
@@ -20,9 +20,9 @@ describe('ResourceFilter', () => {
     expect(screen.getByPlaceholderText('Search tasks...')).toBeInTheDocument();
   });
 
-  it('renders Filter button', () => {
+  it('renders Apply button', () => {
     render(<ResourceFilter {...defaultProps} />);
-    expect(screen.getByText('Filter')).toBeInTheDocument();
+    expect(screen.getByText('Apply')).toBeInTheDocument();
   });
 
   it('does not render Clear button when no filters are active', () => {
@@ -35,14 +35,14 @@ describe('ResourceFilter', () => {
     expect(screen.getByText('Clear')).toBeInTheDocument();
   });
 
-  it('calls onFilterChange when Filter button is clicked', async () => {
+  it('calls onFilterChange when Apply button is clicked', async () => {
     const onFilterChange = vi.fn();
     const user = userEvent.setup();
     render(<ResourceFilter {...defaultProps} onFilterChange={onFilterChange} />);
 
     const nameInput = screen.getByPlaceholderText('Filter by name...');
     await user.type(nameInput, 'my-task');
-    await user.click(screen.getByText('Filter'));
+    await user.click(screen.getByText('Apply'));
 
     expect(onFilterChange).toHaveBeenCalledWith({
       name: 'my-task',

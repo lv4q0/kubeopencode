@@ -249,6 +249,10 @@ ui-dev: ## Run UI development server
 	cd ui && $(UI_PACKAGE_MANAGER) run dev
 .PHONY: ui-dev
 
+ui-dev-mock: ## Run UI dev server with mock API (no backend needed)
+	cd ui && $(UI_PACKAGE_MANAGER) run dev:mock
+.PHONY: ui-dev-mock
+
 ui-clean: ## Clean UI build artifacts
 	rm -rf ui/dist
 	rm -rf ui/node_modules

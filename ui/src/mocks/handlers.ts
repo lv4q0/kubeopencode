@@ -1,84 +1,160 @@
-// MSW request handlers for API mocking
+// MSW request handlers for API mocking (tests + browser dev mode)
 
 import { http, HttpResponse } from 'msw';
 import {
   mockNamespaces,
-  mockTaskListResponse,
-  mockAgentListResponse,
   mockTasks,
   mockAgents,
+  mockAgentTemplates,
+  mockConfig,
+  paginateList,
 } from './data';
+import type { Task, Agent, AgentTemplate } from '../api/client';
 
 const API_BASE = '/api/v1';
 
+function filterByName<T extends { name: string }>(items: T[], name?: string | null): T[] {
+  if (!name) return items;
+  return items.filter((item) => item.name.includes(name));
+}
+
+function filterByNamespace<T extends { namespace: string }>(items: T[], namespace?: string): T[] {
+  if (!namespace) return items;
+  return items.filter((item) => item.namespace === namespace);
+}
+
+function filterByLabels<T extends { labels?: Record<string, string> }>(items: T[], selector?: string | null): T[] {
+  if (!selector) return items;
+  const parts = selector.split(',').map((s) => s.trim());
+  return items.filter((item) => {
+    return parts.every((part) => {
+      if (part.startsWith('!')) {
+        const key = part.slice(1);
+        return !item.labels?.[key];
+      }
+      if (part.includes('=')) {
+        const [key, value] = part.split('=');
+        return item.labels?.[key] === value;
+      }
+      // Key existence check
+      return item.labels?.[part] !== undefined;
+    });
+  });
+}
+
+function parseListParams(url: URL) {
+  return {
+    name: url.searchParams.get('name'),
+    labelSelector: url.searchParams.get('labelSelector'),
+    limit: parseInt(url.searchParams.get('limit') || '20', 10),
+    offset: parseInt(url.searchParams.get('offset') || '0', 10),
+    sortOrder: url.searchParams.get('sortOrder') || 'desc',
+    phase: url.searchParams.get('phase'),
+  };
+}
+
+function sortByCreatedAt<T extends { createdAt: string }>(items: T[], order: string): T[] {
+  return [...items].sort((a, b) => {
+    const diff = new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    return order === 'asc' ? diff : -diff;
+  });
+}
+
+function buildTaskListResponse(tasks: Task[], url: URL) {
+  const params = parseListParams(url);
+  let filtered = filterByName(tasks, params.name);
+  filtered = filterByLabels(filtered, params.labelSelector);
+  if (params.phase) {
+    filtered = filtered.filter((t) => t.phase === params.phase);
+  }
+  filtered = sortByCreatedAt(filtered, params.sortOrder);
+  const { items, pagination } = paginateList(filtered, params.limit, params.offset);
+  return { tasks: items, total: filtered.length, pagination };
+}
+
+function buildAgentListResponse(agents: Agent[], url: URL) {
+  const params = parseListParams(url);
+  let filtered = filterByName(agents, params.name);
+  filtered = filterByLabels(filtered, params.labelSelector);
+  filtered = sortByCreatedAt(filtered, params.sortOrder);
+  const { items, pagination } = paginateList(filtered, params.limit, params.offset);
+  return { agents: items, total: filtered.length, pagination };
+}
+
+function buildTemplateListResponse(templates: AgentTemplate[], url: URL) {
+  const params = parseListParams(url);
+  let filtered = filterByName(templates, params.name);
+  filtered = filterByLabels(filtered, params.labelSelector);
+  filtered = sortByCreatedAt(filtered, params.sortOrder);
+  const { items, pagination } = paginateList(filtered, params.limit, params.offset);
+  return { templates: items, total: filtered.length, pagination };
+}
+
 export const handlers = [
-  // Server info
+  // === Server info ===
   http.get(`${API_BASE}/info`, () => {
-    return HttpResponse.json({ version: '0.1.0' });
+    return HttpResponse.json({ version: '0.0.14-mock' });
   }),
 
-  // Namespaces
+  // === Namespaces ===
   http.get(`${API_BASE}/namespaces`, () => {
     return HttpResponse.json(mockNamespaces);
   }),
 
-  // Tasks - list all
-  http.get(`${API_BASE}/tasks`, () => {
-    return HttpResponse.json(mockTaskListResponse);
+  // === Config ===
+  http.get(`${API_BASE}/config`, ({ request }) => {
+    const url = new URL(request.url);
+    if (url.searchParams.get('output') === 'yaml') {
+      return new HttpResponse(
+        `apiVersion: kubeopencode.io/v1alpha1\nkind: KubeOpenCodeConfig\nmetadata:\n  name: cluster\nspec:\n  cleanup:\n    ttlSecondsAfterFinished: 86400\n    maxRetainedTasks: 100`,
+        { headers: { 'Content-Type': 'text/plain' } },
+      );
+    }
+    return HttpResponse.json(mockConfig);
   }),
 
-  // Tasks - list by namespace
-  http.get(`${API_BASE}/namespaces/:namespace/tasks`, ({ params }) => {
-    const { namespace } = params;
-    const filtered = mockTasks.filter((t) => t.namespace === namespace);
-    return HttpResponse.json({
-      tasks: filtered,
-      total: filtered.length,
-      pagination: {
-        limit: 20,
-        offset: 0,
-        totalCount: filtered.length,
-        hasMore: false,
-      },
-    });
+  // === Tasks ===
+  http.get(`${API_BASE}/tasks`, ({ request }) => {
+    const url = new URL(request.url);
+    return HttpResponse.json(buildTaskListResponse(mockTasks, url));
   }),
 
-  // Tasks - get single
+  http.get(`${API_BASE}/namespaces/:namespace/tasks`, ({ params, request }) => {
+    const url = new URL(request.url);
+    const filtered = filterByNamespace(mockTasks, params.namespace as string);
+    return HttpResponse.json(buildTaskListResponse(filtered, url));
+  }),
+
   http.get(`${API_BASE}/namespaces/:namespace/tasks/:name`, ({ params, request }) => {
     const { namespace, name } = params;
     const url = new URL(request.url);
-    const output = url.searchParams.get('output');
-
     const task = mockTasks.find((t) => t.namespace === namespace && t.name === name);
     if (!task) {
       return HttpResponse.json({ error: 'task not found' }, { status: 404 });
     }
-
-    if (output === 'yaml') {
-      return new HttpResponse(`apiVersion: kubeopencode.io/v1alpha1\nkind: Task\nmetadata:\n  name: ${name}\n  namespace: ${namespace}`, {
-        headers: { 'Content-Type': 'text/plain' },
-      });
+    if (url.searchParams.get('output') === 'yaml') {
+      return new HttpResponse(
+        `apiVersion: kubeopencode.io/v1alpha1\nkind: Task\nmetadata:\n  name: ${name}\n  namespace: ${namespace}\nspec:\n  agentRef:\n    name: ${task.agentRef?.name || 'unknown'}\n  description: "${task.description || ''}"`,
+        { headers: { 'Content-Type': 'text/plain' } },
+      );
     }
-
     return HttpResponse.json(task);
   }),
 
-  // Tasks - create
   http.post(`${API_BASE}/namespaces/:namespace/tasks`, async ({ params, request }) => {
     const { namespace } = params;
     const body = await request.json() as Record<string, unknown>;
-    const newTask = {
+    const newTask: Task = {
       name: (body.name as string) || `task-${Date.now()}`,
       namespace: namespace as string,
       phase: 'Pending',
-      description: body.description,
-      agentRef: body.agentRef,
+      description: body.description as string,
+      agentRef: body.agentRef as { name: string },
       createdAt: new Date().toISOString(),
     };
     return HttpResponse.json(newTask, { status: 201 });
   }),
 
-  // Tasks - delete
   http.delete(`${API_BASE}/namespaces/:namespace/tasks/:name`, ({ params }) => {
     const { namespace, name } = params;
     const task = mockTasks.find((t) => t.namespace === namespace && t.name === name);
@@ -88,7 +164,6 @@ export const handlers = [
     return new HttpResponse(null, { status: 204 });
   }),
 
-  // Tasks - stop
   http.post(`${API_BASE}/namespaces/:namespace/tasks/:name/stop`, ({ params }) => {
     const { namespace, name } = params;
     const task = mockTasks.find((t) => t.namespace === namespace && t.name === name);
@@ -98,44 +173,141 @@ export const handlers = [
     return HttpResponse.json({ ...task, phase: 'Completed' });
   }),
 
-  // Agents - list all
-  http.get(`${API_BASE}/agents`, () => {
-    return HttpResponse.json(mockAgentListResponse);
-  }),
-
-  // Agents - list by namespace
-  http.get(`${API_BASE}/namespaces/:namespace/agents`, ({ params }) => {
-    const { namespace } = params;
-    const filtered = mockAgents.filter((a) => a.namespace === namespace);
-    return HttpResponse.json({
-      agents: filtered,
-      total: filtered.length,
-      pagination: {
-        limit: 20,
-        offset: 0,
-        totalCount: filtered.length,
-        hasMore: false,
+  // Task logs - SSE stream
+  http.get(`${API_BASE}/namespaces/:namespace/tasks/:name/logs`, ({ params }) => {
+    const { name } = params;
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        const lines = [
+          `data: ${JSON.stringify({ type: 'status', phase: 'Running', podPhase: 'Running' })}\n\n`,
+          `data: ${JSON.stringify({ type: 'log', content: `[${name}] Starting task execution...` })}\n\n`,
+          `data: ${JSON.stringify({ type: 'log', content: `[${name}] Cloning repository...` })}\n\n`,
+          `data: ${JSON.stringify({ type: 'log', content: `[${name}] Running opencode agent...` })}\n\n`,
+          `data: ${JSON.stringify({ type: 'log', content: `[${name}] Analyzing codebase structure...` })}\n\n`,
+          `data: ${JSON.stringify({ type: 'log', content: `[${name}] Generating solution...` })}\n\n`,
+        ];
+        let i = 0;
+        const interval = setInterval(() => {
+          if (i < lines.length) {
+            controller.enqueue(encoder.encode(lines[i]));
+            i++;
+          } else {
+            // Send periodic heartbeat logs
+            controller.enqueue(
+              encoder.encode(`data: ${JSON.stringify({ type: 'log', content: `[${name}] Working... (${i - lines.length + 1}s)` })}\n\n`),
+            );
+            i++;
+          }
+        }, 1000);
+        // Clean up after 60s
+        setTimeout(() => {
+          clearInterval(interval);
+          controller.enqueue(
+            encoder.encode(`data: ${JSON.stringify({ type: 'complete', message: 'Task completed' })}\n\n`),
+          );
+          controller.close();
+        }, 60000);
       },
+    });
+    return new HttpResponse(stream, {
+      headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' },
     });
   }),
 
-  // Agents - get single
+  // === Agents ===
+  http.get(`${API_BASE}/agents`, ({ request }) => {
+    const url = new URL(request.url);
+    return HttpResponse.json(buildAgentListResponse(mockAgents, url));
+  }),
+
+  http.get(`${API_BASE}/namespaces/:namespace/agents`, ({ params, request }) => {
+    const url = new URL(request.url);
+    const filtered = filterByNamespace(mockAgents, params.namespace as string);
+    return HttpResponse.json(buildAgentListResponse(filtered, url));
+  }),
+
   http.get(`${API_BASE}/namespaces/:namespace/agents/:name`, ({ params, request }) => {
     const { namespace, name } = params;
     const url = new URL(request.url);
-    const output = url.searchParams.get('output');
-
     const agent = mockAgents.find((a) => a.namespace === namespace && a.name === name);
     if (!agent) {
       return HttpResponse.json({ error: 'agent not found' }, { status: 404 });
     }
-
-    if (output === 'yaml') {
-      return new HttpResponse(`apiVersion: kubeopencode.io/v1alpha1\nkind: Agent\nmetadata:\n  name: ${name}\n  namespace: ${namespace}`, {
-        headers: { 'Content-Type': 'text/plain' },
-      });
+    if (url.searchParams.get('output') === 'yaml') {
+      return new HttpResponse(
+        `apiVersion: kubeopencode.io/v1alpha1\nkind: Agent\nmetadata:\n  name: ${name}\n  namespace: ${namespace}\nspec:\n  executorImage: ${agent.executorImage || ''}\n  agentImage: ${agent.agentImage || ''}\n  workspaceDir: ${agent.workspaceDir || '/workspace'}`,
+        { headers: { 'Content-Type': 'text/plain' } },
+      );
     }
-
     return HttpResponse.json(agent);
+  }),
+
+  http.post(`${API_BASE}/namespaces/:namespace/agents`, async ({ params, request }) => {
+    const { namespace } = params;
+    const body = await request.json() as Record<string, unknown>;
+    const newAgent: Agent = {
+      name: body.name as string,
+      namespace: namespace as string,
+      profile: body.profile as string,
+      workspaceDir: (body.workspaceDir as string) || '/workspace',
+      contextsCount: 0,
+      credentialsCount: 0,
+      createdAt: new Date().toISOString(),
+      mode: 'Pod',
+    };
+    return HttpResponse.json(newAgent, { status: 201 });
+  }),
+
+  http.post(`${API_BASE}/namespaces/:namespace/agents/:name/suspend`, ({ params }) => {
+    const { namespace, name } = params;
+    const agent = mockAgents.find((a) => a.namespace === namespace && a.name === name);
+    if (!agent) {
+      return HttpResponse.json({ error: 'agent not found' }, { status: 404 });
+    }
+    return HttpResponse.json({
+      ...agent,
+      serverStatus: { ...agent.serverStatus, suspended: true, ready: false },
+    });
+  }),
+
+  http.post(`${API_BASE}/namespaces/:namespace/agents/:name/resume`, ({ params }) => {
+    const { namespace, name } = params;
+    const agent = mockAgents.find((a) => a.namespace === namespace && a.name === name);
+    if (!agent) {
+      return HttpResponse.json({ error: 'agent not found' }, { status: 404 });
+    }
+    return HttpResponse.json({
+      ...agent,
+      serverStatus: { ...agent.serverStatus, suspended: false, ready: true },
+    });
+  }),
+
+  // === Agent Templates ===
+  http.get(`${API_BASE}/agenttemplates`, ({ request }) => {
+    const url = new URL(request.url);
+    return HttpResponse.json(buildTemplateListResponse(mockAgentTemplates, url));
+  }),
+
+  http.get(`${API_BASE}/namespaces/:namespace/agenttemplates`, ({ params, request }) => {
+    const url = new URL(request.url);
+    const filtered = filterByNamespace(mockAgentTemplates, params.namespace as string);
+    return HttpResponse.json(buildTemplateListResponse(filtered, url));
+  }),
+
+  http.get(`${API_BASE}/namespaces/:namespace/agenttemplates/:name`, ({ params, request }) => {
+    const { namespace, name } = params;
+    const url = new URL(request.url);
+    const template = mockAgentTemplates.find((t) => t.namespace === namespace && t.name === name);
+    if (!template) {
+      return HttpResponse.json({ error: 'agent template not found' }, { status: 404 });
+    }
+    if (url.searchParams.get('output') === 'yaml') {
+      return new HttpResponse(
+        `apiVersion: kubeopencode.io/v1alpha1\nkind: AgentTemplate\nmetadata:\n  name: ${name}\n  namespace: ${namespace}\nspec:\n  executorImage: ${template.executorImage || ''}\n  agentImage: ${template.agentImage || ''}\n  workspaceDir: ${template.workspaceDir || '/workspace'}`,
+        { headers: { 'Content-Type': 'text/plain' } },
+      );
+    }
+    return HttpResponse.json(template);
   }),
 ];

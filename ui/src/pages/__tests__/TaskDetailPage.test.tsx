@@ -35,21 +35,19 @@ function renderTaskDetailPage(namespace: string, name: string) {
 
 describe('TaskDetailPage', () => {
   it('renders task details from API', async () => {
-    renderTaskDetailPage('default', 'fix-bug-123');
+    renderTaskDetailPage('default', 'fix-auth-bug');
 
     await waitFor(() => {
-      // Use heading role to disambiguate from breadcrumb
-      expect(screen.getByRole('heading', { name: 'fix-bug-123' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'fix-auth-bug' })).toBeInTheDocument();
     });
 
-    // Namespace shown below heading
-    const heading = screen.getByRole('heading', { name: 'fix-bug-123' });
+    const heading = screen.getByRole('heading', { name: 'fix-auth-bug' });
     const headerSection = heading.closest('div')!;
     expect(headerSection.textContent).toContain('default');
   });
 
   it('shows agent reference as link', async () => {
-    renderTaskDetailPage('default', 'fix-bug-123');
+    renderTaskDetailPage('default', 'fix-auth-bug');
 
     await waitFor(() => {
       const agentLink = screen.getByText('opencode-agent');
@@ -58,32 +56,32 @@ describe('TaskDetailPage', () => {
   });
 
   it('shows duration', async () => {
-    renderTaskDetailPage('default', 'fix-bug-123');
+    renderTaskDetailPage('default', 'fix-auth-bug');
 
     await waitFor(() => {
-      expect(screen.getByText('5m')).toBeInTheDocument();
+      expect(screen.getByText('5m 30s')).toBeInTheDocument();
     });
   });
 
   it('shows pod name for running tasks', async () => {
-    renderTaskDetailPage('default', 'fix-bug-123');
+    renderTaskDetailPage('default', 'fix-auth-bug');
 
     await waitFor(() => {
-      expect(screen.getByText('default/fix-bug-123-pod')).toBeInTheDocument();
+      expect(screen.getByText('default/fix-auth-bug-pod')).toBeInTheDocument();
     });
   });
 
   it('shows labels when present', async () => {
-    renderTaskDetailPage('default', 'fix-bug-123');
+    renderTaskDetailPage('default', 'fix-auth-bug');
 
     await waitFor(() => {
-      expect(screen.getByText('myapp')).toBeInTheDocument();
+      expect(screen.getByText('auth-service')).toBeInTheDocument();
       expect(screen.getByText('backend')).toBeInTheDocument();
     });
   });
 
   it('shows conditions when present', async () => {
-    renderTaskDetailPage('default', 'add-feature-456');
+    renderTaskDetailPage('default', 'add-user-profile');
 
     await waitFor(() => {
       expect(screen.getByText('Ready')).toBeInTheDocument();
@@ -92,15 +90,15 @@ describe('TaskDetailPage', () => {
   });
 
   it('shows description when present', async () => {
-    renderTaskDetailPage('default', 'fix-bug-123');
+    renderTaskDetailPage('default', 'fix-auth-bug');
 
     await waitFor(() => {
-      expect(screen.getByText('Fix authentication bug in login flow')).toBeInTheDocument();
+      expect(screen.getByText('Fix authentication bug in login flow causing 401 errors for OAuth users')).toBeInTheDocument();
     });
   });
 
   it('renders LogViewer for running tasks', async () => {
-    renderTaskDetailPage('default', 'fix-bug-123');
+    renderTaskDetailPage('default', 'fix-auth-bug');
 
     await waitFor(() => {
       expect(screen.getByTestId('log-viewer')).toBeInTheDocument();
@@ -108,7 +106,7 @@ describe('TaskDetailPage', () => {
   });
 
   it('renders YamlViewer', async () => {
-    renderTaskDetailPage('default', 'fix-bug-123');
+    renderTaskDetailPage('default', 'fix-auth-bug');
 
     await waitFor(() => {
       expect(screen.getByTestId('yaml-viewer')).toBeInTheDocument();
@@ -116,7 +114,7 @@ describe('TaskDetailPage', () => {
   });
 
   it('shows Stop button for running tasks', async () => {
-    renderTaskDetailPage('default', 'fix-bug-123');
+    renderTaskDetailPage('default', 'fix-auth-bug');
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Stop' })).toBeInTheDocument();
@@ -124,17 +122,17 @@ describe('TaskDetailPage', () => {
   });
 
   it('does not show Stop button for completed tasks', async () => {
-    renderTaskDetailPage('default', 'add-feature-456');
+    renderTaskDetailPage('default', 'add-user-profile');
 
     await waitFor(() => {
-      expect(screen.getByRole('heading', { name: 'add-feature-456' })).toBeInTheDocument();
+      expect(screen.getByRole('heading', { name: 'add-user-profile' })).toBeInTheDocument();
     });
 
     expect(screen.queryByRole('button', { name: 'Stop' })).not.toBeInTheDocument();
   });
 
   it('shows Delete button', async () => {
-    renderTaskDetailPage('default', 'fix-bug-123');
+    renderTaskDetailPage('default', 'fix-auth-bug');
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
@@ -142,20 +140,20 @@ describe('TaskDetailPage', () => {
   });
 
   it('shows Rerun link', async () => {
-    renderTaskDetailPage('default', 'fix-bug-123');
+    renderTaskDetailPage('default', 'fix-auth-bug');
 
     await waitFor(() => {
       const rerunLink = screen.getByText('Rerun');
       expect(rerunLink.closest('a')).toHaveAttribute(
         'href',
-        '/tasks/create?namespace=default&rerun=fix-bug-123'
+        '/tasks/create?rerun=fix-auth-bug&namespace=default'
       );
     });
   });
 
   it('opens confirm dialog when Delete is clicked', async () => {
     const user = userEvent.setup();
-    renderTaskDetailPage('default', 'fix-bug-123');
+    renderTaskDetailPage('default', 'fix-auth-bug');
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
@@ -173,13 +171,13 @@ describe('TaskDetailPage', () => {
     let deleteCalled = false;
 
     server.use(
-      http.delete('/api/v1/namespaces/default/tasks/fix-bug-123', () => {
+      http.delete('/api/v1/namespaces/default/tasks/fix-auth-bug', () => {
         deleteCalled = true;
         return new HttpResponse(null, { status: 204 });
       })
     );
 
-    renderTaskDetailPage('default', 'fix-bug-123');
+    renderTaskDetailPage('default', 'fix-auth-bug');
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
@@ -188,7 +186,7 @@ describe('TaskDetailPage', () => {
     // Click Delete button to open dialog
     await user.click(screen.getByRole('button', { name: 'Delete' }));
 
-    // Find the confirm "Delete" button inside the dialog (it has role button too)
+    // Find the confirm "Delete" button inside the dialog
     const dialog = screen.getByText('Delete Task').closest('.relative.bg-white')!;
     const confirmButton = dialog.querySelector('button.bg-red-600') ||
       Array.from(dialog.querySelectorAll('button')).find(
@@ -213,10 +211,9 @@ describe('TaskDetailPage', () => {
   });
 
   it('shows breadcrumbs navigation', async () => {
-    renderTaskDetailPage('default', 'fix-bug-123');
+    renderTaskDetailPage('default', 'fix-auth-bug');
 
     await waitFor(() => {
-      // Breadcrumb has "Tasks" link
       const breadcrumbNav = screen.getByLabelText('Breadcrumb');
       expect(breadcrumbNav).toBeInTheDocument();
       expect(breadcrumbNav.textContent).toContain('Tasks');

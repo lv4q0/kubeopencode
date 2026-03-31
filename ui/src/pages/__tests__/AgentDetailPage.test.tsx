@@ -8,6 +8,10 @@ vi.mock('../../components/YamlViewer', () => ({
   default: () => <div data-testid="yaml-viewer">YamlViewer</div>,
 }));
 
+vi.mock('../../components/TerminalPanel', () => ({
+  default: () => <div data-testid="terminal-panel">TerminalPanel</div>,
+}));
+
 function renderAgentDetailPage(namespace: string, name: string) {
   return renderWithProviders(
     <Routes>
@@ -47,7 +51,7 @@ describe('AgentDetailPage', () => {
     renderAgentDetailPage('default', 'opencode-agent');
 
     await waitFor(() => {
-      expect(screen.getByText('Full-stack development agent with GitHub access')).toBeInTheDocument();
+      expect(screen.getByText(/Full-stack development agent/)).toBeInTheDocument();
     });
   });
 
@@ -95,7 +99,7 @@ describe('AgentDetailPage', () => {
     renderAgentDetailPage('default', 'opencode-agent');
 
     await waitFor(() => {
-      expect(screen.getByText('Credentials (1)')).toBeInTheDocument();
+      expect(screen.getByText('Credentials (2)')).toBeInTheDocument();
       expect(screen.getByText('github-token')).toBeInTheDocument();
       expect(screen.getByText(/github-creds/)).toBeInTheDocument();
     });
@@ -105,7 +109,7 @@ describe('AgentDetailPage', () => {
     renderAgentDetailPage('default', 'opencode-agent');
 
     await waitFor(() => {
-      expect(screen.getByText('Contexts (2)')).toBeInTheDocument();
+      expect(screen.getByText('Contexts (3)')).toBeInTheDocument();
       expect(screen.getByText('coding-standards')).toBeInTheDocument();
       expect(screen.getByText('source')).toBeInTheDocument();
     });
@@ -131,11 +135,11 @@ describe('AgentDetailPage', () => {
     });
   });
 
-  it('shows "Create Task with this Agent" link', async () => {
+  it('shows "Create Task" button', async () => {
     renderAgentDetailPage('default', 'opencode-agent');
 
     await waitFor(() => {
-      const link = screen.getByText('Create Task with this Agent');
+      const link = screen.getByText('Create Task');
       expect(link.closest('a')).toHaveAttribute(
         'href',
         '/tasks/create?agent=default/opencode-agent'
