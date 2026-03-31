@@ -74,8 +74,7 @@ RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/i
 # === Node.js (LTS) ===
 RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
-    && rm -rf /var/lib/apt/lists/* \
-    && npm install -g npm@latest
+    && rm -rf /var/lib/apt/lists/*
 
 # === Python 3 + pipx ===
 RUN apt-get update && apt-get install -y --no-install-recommends \
