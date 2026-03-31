@@ -195,6 +195,10 @@ func (s *Server) setupRoutes() *chi.Mux {
 			r.Get("/{name}", agentTemplateHandler.Get)
 		})
 
+		// Config endpoint (cluster-scoped singleton)
+		configHandler := handlers.NewConfigHandler(s.k8sClient)
+		r.Get("/config", configHandler.Get)
+
 		// Agent endpoints
 		r.Get("/agents", agentHandler.ListAll)
 		r.Route("/namespaces/{namespace}/agents", func(r chi.Router) {

@@ -8,6 +8,7 @@ import AgentsPage from './pages/AgentsPage';
 import AgentDetailPage from './pages/AgentDetailPage';
 import AgentTemplatesPage from './pages/AgentTemplatesPage';
 import AgentTemplateDetailPage from './pages/AgentTemplateDetailPage';
+import ConfigPage from './pages/ConfigPage';
 
 function App() {
   return (
@@ -22,6 +23,7 @@ function App() {
           <Route path="agents/:namespace/:name" element={<AgentDetailPage />} />
           <Route path="templates" element={<AgentTemplatesPage />} />
           <Route path="templates/:namespace/:name" element={<AgentTemplateDetailPage />} />
+          <Route path="config" element={<ConfigPage />} />
         </Route>
       </Routes>
     </BrowserRouter>

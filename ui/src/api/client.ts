@@ -138,6 +138,31 @@ export interface AgentListResponse {
   pagination?: Pagination;
 }
 
+export interface SystemImageConfig {
+  image?: string;
+  imagePullPolicy?: string;
+}
+
+export interface CleanupConfig {
+  ttlSecondsAfterFinished?: number;
+  maxRetainedTasks?: number;
+}
+
+export interface ProxyConfigInfo {
+  httpProxy?: string;
+  httpsProxy?: string;
+  noProxy?: string;
+}
+
+export interface ConfigResponse {
+  name: string;
+  createdAt: string;
+  systemImage?: SystemImageConfig;
+  cleanup?: CleanupConfig;
+  proxy?: ProxyConfigInfo;
+  labels?: Record<string, string>;
+}
+
 export interface ServerInfo {
   version: string;
 }
@@ -301,6 +326,15 @@ export const api = {
 
   getAgentTemplateYaml: async (namespace: string, name: string): Promise<string> => {
     const response = await fetch(`${API_BASE}/namespaces/${namespace}/agenttemplates/${name}?output=yaml`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    return response.text();
+  },
+
+  // Config (cluster-scoped singleton)
+  getConfig: () => request<ConfigResponse>('/config'),
+
+  getConfigYaml: async (): Promise<string> => {
+    const response = await fetch(`${API_BASE}/config?output=yaml`);
     if (!response.ok) throw new Error(`HTTP ${response.status}`);
     return response.text();
   },

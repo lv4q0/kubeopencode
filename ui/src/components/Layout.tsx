@@ -162,6 +162,27 @@ function Layout() {
 
       <div className="flex-1" />
 
+      {/* Settings */}
+      <div className="px-3 pb-3 flex-shrink-0">
+        <NavLink
+          to="/config"
+          className={({ isActive }) =>
+            `flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-all ${
+              isActive
+                ? 'bg-primary-50 text-primary-700 font-medium'
+                : 'text-sidebar-muted hover:text-sidebar-text hover:bg-sidebar-hover'
+            }`
+          }
+          onClick={() => setMobileSidebarOpen(false)}
+        >
+          <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+          </svg>
+          <span className="flex-1">Config</span>
+        </NavLink>
+      </div>
+
       {/* Footer */}
       <div className="px-4 py-3 border-t border-sidebar-border flex-shrink-0">
         <div className="flex items-center gap-2 text-[11px] text-sidebar-muted">
@@ -281,6 +302,20 @@ function Layout() {
             </NavLink>
 
             <div className="flex-1" />
+            <NavLink
+              to="/config"
+              className={({ isActive }) =>
+                `w-9 h-9 rounded-lg flex items-center justify-center transition-colors ${
+                  isActive ? 'text-primary-700 bg-primary-50' : 'text-sidebar-muted hover:text-sidebar-text hover:bg-sidebar-hover'
+                }`
+              }
+              title="Config"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="12" cy="12" r="3" />
+                <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z" />
+              </svg>
+            </NavLink>
             <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 mb-2" title={serverVersion} />
           </div>
         )}

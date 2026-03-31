@@ -173,6 +173,35 @@ type AgentListResponse struct {
 	Pagination *Pagination     `json:"pagination,omitempty"`
 }
 
+// ConfigResponse represents the KubeOpenCodeConfig in API responses
+type ConfigResponse struct {
+	Name        string             `json:"name"`
+	CreatedAt   time.Time          `json:"createdAt"`
+	SystemImage *SystemImageConfig `json:"systemImage,omitempty"`
+	Cleanup     *CleanupConfig     `json:"cleanup,omitempty"`
+	Proxy       *ProxyConfigInfo   `json:"proxy,omitempty"`
+	Labels      map[string]string  `json:"labels,omitempty"`
+}
+
+// SystemImageConfig represents system image configuration
+type SystemImageConfig struct {
+	Image           string `json:"image,omitempty"`
+	ImagePullPolicy string `json:"imagePullPolicy,omitempty"`
+}
+
+// CleanupConfig represents cleanup configuration
+type CleanupConfig struct {
+	TTLSecondsAfterFinished *int32 `json:"ttlSecondsAfterFinished,omitempty"`
+	MaxRetainedTasks        *int32 `json:"maxRetainedTasks,omitempty"`
+}
+
+// ProxyConfigInfo represents proxy configuration in API responses
+type ProxyConfigInfo struct {
+	HttpProxy  string `json:"httpProxy,omitempty"`
+	HttpsProxy string `json:"httpsProxy,omitempty"`
+	NoProxy    string `json:"noProxy,omitempty"`
+}
+
 // ErrorResponse represents an error response
 type ErrorResponse struct {
 	Error   string `json:"error"`
