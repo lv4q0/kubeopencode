@@ -10,52 +10,39 @@ function AgentCreatePage() {
   const navigate = useNavigate();
   const { addToast } = useToast();
   const [searchParams] = useSearchParams();
-  const { namespace: globalNamespace, isAllNamespaces, setNamespace: setGlobalNamespace } = useNamespace();
-  const [namespace, setNamespace] = useState(() => {
-    const templateParam = searchParams.get('template');
-    if (templateParam) {
-      const ns = templateParam.split('/')[0];
-      if (ns) return ns;
-    }
-    return isAllNamespaces ? 'default' : globalNamespace;
-  });
+  const { namespace: globalNamespace, isAllNamespaces } = useNamespace();
   const [name, setName] = useState('');
   const [profile, setProfile] = useState('');
   const [workspaceDir, setWorkspaceDir] = useState('/workspace');
   const [serviceAccountName, setServiceAccountName] = useState('default');
+  // selectedTemplate stores "namespace/name" or "" for no template
   const [selectedTemplate, setSelectedTemplate] = useState('');
 
-  const { data: namespacesData } = useQuery({
-    queryKey: ['namespaces'],
-    queryFn: () => api.getNamespaces(),
+  const { data: allTemplatesData } = useQuery({
+    queryKey: ['all-templates'],
+    queryFn: () => api.listAllAgentTemplates({ limit: 200, sortOrder: 'asc' }),
   });
 
-  const { data: templatesData } = useQuery({
-    queryKey: ['templates', namespace],
-    queryFn: () => api.listAgentTemplates(namespace, { limit: 100, sortOrder: 'asc' }),
-  });
-
-  const availableTemplates = useMemo(
-    () => templatesData?.templates || [],
-    [templatesData]
+  const allTemplates = useMemo(
+    () => allTemplatesData?.templates || [],
+    [allTemplatesData]
   );
+
+  // Derive namespace from template selection, or fall back to global
+  const namespace = useMemo(() => {
+    if (selectedTemplate) {
+      const ns = selectedTemplate.split('/')[0];
+      if (ns) return ns;
+    }
+    return isAllNamespaces ? 'default' : globalNamespace;
+  }, [selectedTemplate, globalNamespace, isAllNamespaces]);
 
   useEffect(() => {
     const templateParam = searchParams.get('template');
     if (templateParam) {
-      const parts = templateParam.split('/');
-      if (parts.length === 2) {
-        setNamespace(parts[0]);
-        setSelectedTemplate(parts[1]);
-      }
+      setSelectedTemplate(templateParam);
     }
   }, [searchParams]);
-
-  const handleNamespaceChange = (newNamespace: string) => {
-    setNamespace(newNamespace);
-    setGlobalNamespace(newNamespace);
-    setSelectedTemplate('');
-  };
 
   const createMutation = useMutation({
     mutationFn: (agent: CreateAgentRequest) => api.createAgent(namespace, agent),
@@ -82,7 +69,10 @@ function AgentCreatePage() {
     }
 
     if (selectedTemplate) {
-      agent.templateRef = { name: selectedTemplate };
+      const templateName = selectedTemplate.split('/')[1];
+      if (templateName) {
+        agent.templateRef = { name: templateName };
+      }
     }
 
     createMutation.mutate(agent);
@@ -104,47 +94,6 @@ function AgentCreatePage() {
         </div>
 
         <form onSubmit={handleSubmit} className="px-6 py-5 space-y-5">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label
-                htmlFor="namespace"
-                className="block text-[11px] font-display font-medium text-stone-400 uppercase tracking-wider mb-1.5"
-              >
-                Namespace
-              </label>
-              <select
-                id="namespace"
-                value={namespace}
-                onChange={(e) => handleNamespaceChange(e.target.value)}
-                className="block w-full rounded-lg border-stone-200 bg-white shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm text-stone-700"
-              >
-                {namespacesData?.namespaces.map((ns) => (
-                  <option key={ns} value={ns}>
-                    {ns}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label
-                htmlFor="name"
-                className="block text-[11px] font-display font-medium text-stone-400 uppercase tracking-wider mb-1.5"
-              >
-                Name
-              </label>
-              <input
-                type="text"
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-                placeholder="my-agent"
-                className="block w-full rounded-lg border-stone-200 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm text-stone-700 placeholder:text-stone-300"
-              />
-            </div>
-          </div>
-
           <div>
             <label
               htmlFor="template"
@@ -159,17 +108,37 @@ function AgentCreatePage() {
               className="block w-full rounded-lg border-stone-200 bg-white shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm text-stone-700"
             >
               <option value="">No template</option>
-              {availableTemplates.map((tmpl) => (
-                <option key={tmpl.name} value={tmpl.name}>
-                  {tmpl.name}
+              {allTemplates.map((tmpl) => (
+                <option key={`${tmpl.namespace}/${tmpl.name}`} value={`${tmpl.namespace}/${tmpl.name}`}>
+                  {tmpl.namespace}/{tmpl.name}
                 </option>
               ))}
             </select>
             <p className="mt-1.5 text-xs text-stone-400">
-              {availableTemplates.length === 0
-                ? 'No templates available in this namespace.'
-                : 'Inherit configuration from an AgentTemplate.'}
+              {allTemplates.length === 0
+                ? 'No templates available.'
+                : selectedTemplate
+                  ? `Agent will be created in namespace "${namespace}".`
+                  : `Inherit configuration from an AgentTemplate. Agent will be created in namespace "${namespace}".`}
             </p>
+          </div>
+
+          <div>
+            <label
+              htmlFor="name"
+              className="block text-[11px] font-display font-medium text-stone-400 uppercase tracking-wider mb-1.5"
+            >
+              Name
+            </label>
+            <input
+              type="text"
+              id="name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+              placeholder="my-agent"
+              className="block w-full rounded-lg border-stone-200 shadow-sm focus:border-primary-500 focus:ring-primary-500 text-sm text-stone-700 placeholder:text-stone-300"
+            />
           </div>
 
           <div className="grid grid-cols-2 gap-4">
