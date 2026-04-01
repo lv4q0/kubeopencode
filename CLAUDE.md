@@ -240,6 +240,7 @@ Three-tier strategy: unit (`make test`), integration (`make integration-test`, u
 - **Conventional commits**: `feat:`, `fix:`, `docs:`, `refactor:`, `test:`, `chore:`
 - **Always sign commits**: `git commit -s -m "feat: description"`
 - **PRs**: Check for upstream repos first; create PRs against upstream, not forks
+- **Releasing**: Follow `docs/releasing.md` (Release SOP) step-by-step. Never skip steps or improvise the release process.
 
 ## Troubleshooting
 
