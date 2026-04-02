@@ -39,6 +39,7 @@ ARG BUILD_TIME=unknown
 RUN apk add --no-cache \
     git \
     openssh-client \
+    tzdata \
     && rm -rf /var/cache/apk/*
 
 # Add labels for traceability
