@@ -4,7 +4,29 @@ const sidebars: SidebarsConfig = {
   docsSidebar: [
     'getting-started',
     'setting-up-agent',
-    'features',
+    {
+      type: 'category',
+      label: 'Features',
+      link: {
+        type: 'doc',
+        id: 'features/index',
+      },
+      items: [
+        'features/live-agents',
+        'features/context-system',
+        'features/agent-configuration',
+        'features/agent-templates',
+        'features/skills',
+        'features/multi-ai',
+        'features/crontask',
+        'features/git-auto-sync',
+        'features/task-stop',
+        'features/concurrency-quota',
+        'features/persistence',
+        'features/enterprise',
+        'features/pod-configuration',
+      ],
+    },
     'architecture',
     'security',
     {

@@ -133,7 +133,7 @@ The `deploy/local-dev/` directory sets up:
 | Agent | `persistent-agent` | Persistent agent with session + workspace storage, standby, concurrency control |
 | Agent | `dev-agent` | Lightweight agent with ephemeral storage |
 
-These demonstrate key features: template inheritance, persistence, suspend/resume, and concurrency control. See [Features](features.md) for details.
+These demonstrate key features: template inheritance, persistence, suspend/resume, and concurrency control. See [Features](features/index.md) for details.
 
 ### Using a Paid Model
 
@@ -142,7 +142,7 @@ The default setup uses the free `opencode/big-pickle` model. To switch to a paid
 ## Next Steps
 
 - [Setting Up an Agent](setting-up-agent.md) — Configure your own Agent: model selection, images, persistence, and more
-- [Features](features.md) — Learn about Live Agents (human-in-the-loop) and automated workflows
+- [Features](features/index.md) — Learn about Live Agents (human-in-the-loop) and automated workflows
 - [Security](security.md) — RBAC, credential management, and best practices
 - [Architecture](architecture.md) — System design and API reference
 

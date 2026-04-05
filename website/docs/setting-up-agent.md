@@ -250,7 +250,7 @@ spec:
       size: "10Gi"
 ```
 
-See [Features — Persistence](features.md#persistence) for the full explanation of how Kubernetes storage works with KubeOpenCode.
+See [Persistence & Lifecycle](features/persistence.md) for the full explanation of how Kubernetes storage works with KubeOpenCode.
 
 ### Standby (Auto Suspend/Resume)
 
@@ -273,7 +273,7 @@ kubectl patch agent my-agent --type merge -p '{"spec":{"suspend":true}}'
 kubectl patch agent my-agent --type merge -p '{"spec":{"suspend":false}}'
 ```
 
-See [Features — Suspend/Resume](features.md#suspendresume) for details.
+See [Persistence & Lifecycle — Suspend/Resume](features/persistence.md#suspendresume) for details.
 
 ### Context
 
@@ -326,7 +326,7 @@ contexts:
     mountPath: repo/
 ```
 
-See [Features — Flexible Context System](features.md#flexible-context-system) for all context types and examples.
+See [Flexible Context System](features/context-system.md) for all context types and examples.
 
 ### Skills
 
@@ -345,7 +345,7 @@ spec:
           - skill-creator
 ```
 
-KubeOpenCode automatically clones the skill repos and injects the paths into the OpenCode config. See [Features — Skills](features.md#skills) for private repos and advanced usage.
+KubeOpenCode automatically clones the skill repos and injects the paths into the OpenCode config. See [Skills](features/skills.md) for private repos and advanced usage.
 
 ### Concurrency & Quota
 
@@ -359,7 +359,7 @@ spec:
     windowSeconds: 3600
 ```
 
-See [Features — Concurrency Control](features.md#concurrency-control) and [Quota](features.md#quota-rate-limiting) for details.
+See [Concurrency & Quota](features/concurrency-quota.md) for details.
 
 ## Complete Example
 
@@ -491,7 +491,7 @@ spec:
 
 Agent fields override template fields for scalars. For lists (contexts, credentials), the Agent **replaces** the template list entirely.
 
-See [Features — Agent Templates](features.md#agent-templates) for merge behavior details.
+See [Agent Templates](features/agent-templates.md) for merge behavior details.
 
 ## Submitting Tasks to Your Agent
 
@@ -521,6 +521,6 @@ Read more about this pattern and how we built it: [Whatever You Want to Build, B
 
 ## Next Steps
 
-- [Features](features.md) — Deep dive into all Agent capabilities
+- [Features](features/index.md) — Deep dive into all Agent capabilities
 - [Security](security.md) — RBAC, credential management, and network proxy
 - [Architecture](architecture.md) — System design and complete API reference
