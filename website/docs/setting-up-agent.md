@@ -226,7 +226,7 @@ With model, images, and workspace configured, your Agent is ready to run. The fo
 
 ### Persistence
 
-By default, Agent pods use ephemeral storage — everything is lost on restart. Enable persistence to preserve:
+By default, Agent pods use ephemeral storage (EmptyDir) — everything is lost on restart. Enable persistence to preserve:
 
 - **Sessions** — Conversation history (OpenCode's SQLite database)
 - **Workspace** — Cloned repos, generated files, build artifacts
@@ -240,9 +240,17 @@ spec:
       size: "10Gi"      # Workspace files survive restarts
 ```
 
-Both fields are optional — you can persist sessions only, workspace only, or both. Each creates a PersistentVolumeClaim in the Agent's namespace.
+Both fields are optional — you can persist sessions only, workspace only, or both. The controller automatically creates a PersistentVolumeClaim (PVC) for each, using your cluster's default StorageClass. To use a specific StorageClass, set `storageClassName`:
 
-See [Features — Persistence](features.md#persistence) for storage class configuration and details.
+```yaml
+spec:
+  persistence:
+    workspace:
+      storageClassName: "fast-ssd"
+      size: "10Gi"
+```
+
+See [Features — Persistence](features.md#persistence) for the full explanation of how Kubernetes storage works with KubeOpenCode.
 
 ### Standby (Auto Suspend/Resume)
 

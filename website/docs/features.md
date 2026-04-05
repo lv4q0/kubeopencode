@@ -944,9 +944,21 @@ spec:
 
 ## Persistence
 
-By default, Agents use ephemeral storage. When the server pod restarts (due to crashes, node drains, or upgrades), session data and workspace files are lost.
+By default, Agents use ephemeral storage ([EmptyDir](https://kubernetes.io/docs/concepts/storage/volumes/#emptydir) volumes). EmptyDir is a temporary volume that Kubernetes provides automatically — no configuration required. When the server pod restarts (due to crashes, node drains, or upgrades), all EmptyDir data is lost.
 
-Persistence stores data on PersistentVolumeClaims (PVCs), so it survives pod restarts. Session and workspace persistence are configured independently. See [Live Agents](#live-agents) above for the full overview.
+Persistence replaces EmptyDir with [PersistentVolumeClaims (PVCs)](https://kubernetes.io/docs/concepts/storage/persistent-volumes/), so data survives pod restarts. Session and workspace persistence are configured independently. See [Live Agents](#live-agents) above for the full overview.
+
+:::info Kubernetes Storage Concepts
+Kubernetes storage has three layers:
+
+| Layer | What It Is | Who Manages It |
+|-------|-----------|----------------|
+| **StorageClass** | Defines *how* storage is provisioned (e.g., AWS EBS, GCP Persistent Disk, local-path). | Cluster administrator |
+| **PersistentVolume (PV)** | An actual block of storage in your cluster. | Created automatically by the StorageClass (dynamic provisioning) |
+| **PersistentVolumeClaim (PVC)** | A request for storage — "I need 10Gi of disk". | Created automatically by the KubeOpenCode controller |
+
+**You only need to configure `persistence` in your Agent spec.** The controller creates PVCs automatically, and Kubernetes provisions the underlying storage via your cluster's StorageClass.
+:::
 
 ### Configuration
 
@@ -969,22 +981,53 @@ spec:
       size: "20Gi"              # default: 10Gi
 ```
 
+Both fields are optional — you can persist sessions only, workspace only, or both.
+
+#### Specifying a StorageClass
+
+By default, PVCs use your cluster's default StorageClass. To use a specific StorageClass (e.g., a faster SSD tier):
+
+```yaml
+spec:
+  persistence:
+    sessions:
+      storageClassName: "fast-ssd"
+      size: "2Gi"
+    workspace:
+      storageClassName: "fast-ssd"
+      size: "50Gi"
+```
+
+To check which StorageClasses are available on your cluster:
+
+```bash
+kubectl get storageclass
+```
+
+The one marked `(default)` is used when `storageClassName` is omitted.
+
 ### How It Works
 
+**Without persistence (default):**
+- Workspace directory uses an EmptyDir volume — available immediately, no setup needed
+- Session data (SQLite DB) lives inside the container's ephemeral storage
+- Pod restart = data lost, git repos re-cloned by init containers
+
 **Session persistence** (`persistence.sessions`):
-- A PVC (`{agent-name}-server-sessions`) is created and mounted at `/data/sessions`
+- The controller creates a PVC named `{agent-name}-server-sessions` and mounts it at `/data/sessions`
 - `OPENCODE_DB` env var is set to `/data/sessions/opencode.db`
 - Conversation history survives pod restarts
 
 **Workspace persistence** (`persistence.workspace`):
-- The workspace EmptyDir is replaced with a PVC (`{agent-name}-server-workspace`)
+- The controller replaces the workspace EmptyDir with a PVC named `{agent-name}-server-workspace`
 - Git-cloned repos, AI-modified files, and in-progress work survive pod restarts
 - git-init skips cloning when the repository already exists on the PVC
 
 ### PVC Lifecycle
 
-- The PVC is created with an `OwnerReference` to the Agent
-- When the Agent is deleted, the PVC is automatically garbage-collected
+- PVCs are **created automatically** by the controller when persistence is configured — you never need to create them manually
+- Each PVC has an `OwnerReference` pointing to the Agent
+- When the Agent is deleted, its PVCs are automatically garbage-collected by Kubernetes
 - To retain data after Agent deletion, configure the StorageClass with `reclaimPolicy: Retain`
 - PVC specs are immutable after creation; to change size or storage class, delete and recreate the Agent
 
