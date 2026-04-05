@@ -1,34 +1,36 @@
 # Copyright Contributors to the KubeOpenCode project
-# CronTask example for local testing
+# CronTask example — daily workspace health report
 #
-# Scheduled task that runs every 5 minutes using the persistent agent.
-# Demonstrates CronTask features:
-#   - schedule: cron expression for recurring execution
-#   - concurrencyPolicy: Forbid (skip if previous task is still running)
-#   - maxRetainedTasks: safety limit on total child Tasks
-#   - taskTemplate: embedded Task configuration
+# Analyzes workspace files and generates a summary report every morning.
+# No external credentials needed — works out of the box with local-dev setup.
 #
 # Usage:
 #   kubectl apply -f deploy/local-dev/crontask.yaml
 #   kubectl get crontasks -n test
-#   kubectl annotate crontask scheduled-check kubeopencode.io/trigger=true -n test  # Manual trigger
-#   kubectl patch crontask scheduled-check -n test --type merge -p '{"spec":{"suspend":true}}'  # Suspend
+#   kubectl annotate crontask workspace-report kubeopencode.io/trigger=true -n test  # Manual trigger
+#   kubectl patch crontask workspace-report -n test --type merge -p '{"spec":{"suspend":true}}'  # Suspend
 #
 apiVersion: kubeopencode.io/v1alpha1
 kind: CronTask
 metadata:
-  name: scheduled-check
+  name: workspace-report
 spec:
-  schedule: "*/5 * * * *"
+  # Daily at 9:00 AM
+  schedule: "0 9 * * *"
+  timeZone: "Asia/Shanghai"
   concurrencyPolicy: Forbid
   maxRetainedTasks: 5
   taskTemplate:
     metadata:
       labels:
         type: scheduled
+        component: workspace-analysis
     spec:
       agentRef:
-        name: persistent-agent
+        name: team-agent
       description: |
-        Check the workspace for any issues and report a brief summary.
-        Keep the response concise — just list findings.
+        Analyze the current workspace and generate a health report:
+        1. List all projects and their structure
+        2. Identify any TODO or FIXME comments
+        3. Summarize recent file changes
+        Write the report to workspace-report.md in the workspace root.

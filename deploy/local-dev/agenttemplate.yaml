@@ -8,14 +8,14 @@
 apiVersion: kubeopencode.io/v1alpha1
 kind: AgentTemplate
 metadata:
-  name: local-dev-base
+  name: team-base
 spec:
   # OpenCode init container image
-  agentImage: quay.io/kubeopencode/kubeopencode-agent-opencode:latest
+  agentImage: quay.io/kubeopencode/kubeopencode-agent-opencode:0.0.18
   # Executor container image
-  executorImage: quay.io/kubeopencode/kubeopencode-agent-devbox:latest
+  executorImage: quay.io/kubeopencode/kubeopencode-agent-devbox:0.0.18
   # Attach image for agentRef Task Pods
-  attachImage: quay.io/kubeopencode/kubeopencode-agent-attach:latest
+  attachImage: quay.io/kubeopencode/kubeopencode-agent-attach:0.0.18
   # Working directory
   workspaceDir: /workspace
   # ServiceAccount for RBAC
@@ -24,6 +24,12 @@ spec:
   # Uses the free opencode/big-pickle model — no API key required.
   # To use a different model (e.g., Anthropic, Google), update the model fields
   # and create a Secret with your API key (see secrets.yaml.example).
+  # Proxy for Kind clusters behind a firewall (OrbStack: use host.internal)
+  proxy:
+    httpProxy: "http://host.internal:7897"
+    httpsProxy: "http://host.internal:7897"
+    noProxy: "localhost,127.0.0.1,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+  # Shared OpenCode configuration
   config: |
     {
       "$schema": "https://opencode.ai/config.json",

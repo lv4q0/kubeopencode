@@ -1,42 +1,83 @@
 # Copyright Contributors to the KubeOpenCode project
-# Persistent Agent for local testing
+# Team Agent — the primary agent for demo and local development
 #
-# Agent with session and workspace persistence — data survives pod restarts.
-# Includes standby for automatic suspend/resume lifecycle management.
-#
-# Features demonstrated:
-#   - templateRef: inherits shared config from AgentTemplate
-#   - persistence: session + workspace data survive pod restarts
-#   - standby: auto-suspends after 30 minutes idle, auto-resumes on new Task
-#   - maxConcurrentTasks: limits concurrent task execution
+# Full-featured agent with persistence, standby, skills, and context auto-sync.
 #
 apiVersion: kubeopencode.io/v1alpha1
 kind: Agent
 metadata:
-  name: persistent-agent
+  name: team-agent
 spec:
-  # Inherit shared configuration from AgentTemplate
   templateRef:
-    name: local-dev-base
-  profile: "Persistent agent with session history and workspace storage"
-  # Required fields (also in template, but required on Agent)
-  executorImage: quay.io/kubeopencode/kubeopencode-agent-devbox:latest
+    name: team-base
+  profile: "Team shared agent"
+  executorImage: quay.io/kubeopencode/kubeopencode-agent-devbox:0.0.18
   workspaceDir: /workspace
   serviceAccountName: kubeopencode-agent
-  # Server port (default: 4096)
   port: 4096
-  # Session persistence: conversation history survives pod restarts
+
+  # Persistence: session history + workspace files survive pod restarts
   persistence:
     sessions:
       size: "1Gi"
-    # Workspace persistence: git repos and modified files survive pod restarts
     workspace:
       size: "5Gi"
-  # Standby: auto-suspend after 30 minutes idle, auto-resume when new Task arrives
+
+  # Standby: auto-suspend after 30min idle, auto-resume when new Task arrives
   standby:
     idleTimeout: "30m"
-  # Limit concurrent tasks for local testing
+
   maxConcurrentTasks: 3
+
+  # OpenCode configuration (overrides template config)
+  # Controls model selection, credentials, and behavior.
+  # Using free opencode/big-pickle model — no API key required.
+  # To switch to paid models (e.g., Anthropic Claude):
+  #   1. Create a Secret with your API key (see secrets.yaml.example)
+  #   2. Update the model fields below
+  #   3. Uncomment the credentials section at the bottom
+  config: |
+    {
+      "$schema": "https://opencode.ai/config.json",
+      "model": "opencode/big-pickle",
+      "small_model": "opencode/big-pickle",
+      "share": "disabled",
+      "autoupdate": false
+    }
+
+  # Skills: import SKILL.md files from Git repositories
+  skills:
+  - name: anthropic-skills
+    git:
+      repository: https://github.com/anthropics/skills.git
+      ref: main
+      path: skills/
+      names:
+      - skill-creator
+      - frontend-design
+      - doc-coauthoring
+  - name: kubeopencode-skills
+    git:
+      repository: https://github.com/kubeopencode/skills.git
+      ref: main
+      path: kubeopencode/skills/
+      names:
+      - kubeoc
+
+  # Context: auto-sync from Git repository (HotReload = in-place update, no pod restart)
+  contexts:
+  - name: kubeopencode-agent
+    description: "KubeOpenCode agent repo — workflows, SOPs, and project knowledge"
+    type: Git
+    git:
+      repository: https://github.com/kubeopencode/kubeopencode-agent.git
+      ref: main
+      sync:
+        enabled: true
+        interval: "5m"
+        policy: HotReload
+    mountPath: .
+
   # Optional: Mount API credentials for paid models (not needed for free big-pickle model)
   # credentials:
   #   - name: opencode

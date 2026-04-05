@@ -85,18 +85,25 @@ done
 
 > **Important:** All three agent images must be loaded. Missing the `attach` image will cause `agentRef` Tasks to fail with `ErrImagePull`.
 
+> **Important: Avoid `:latest` tag for agent images.** The controller sets `imagePullPolicy: Always` for images with the `:latest` tag or no tag (standard Kubernetes convention). In Kind, this causes `ErrImagePull` because the cluster cannot pull from remote registries. The local-dev agent YAML files use versioned tags (e.g., `:0.0.18`) to avoid this. If you change agent images, always use a versioned tag, not `:latest`.
+
 ### 4. Deploy with Helm
 
 ```bash
 helm upgrade --install kubeopencode ./charts/kubeopencode \
   --namespace kubeopencode-system \
   --create-namespace \
+  --set controller.image.tag=latest \
   --set controller.image.pullPolicy=Never \
   --set agent.image.pullPolicy=Never \
-  --set server.enabled=true
+  --set server.enabled=true \
+  --set server.image.tag=latest \
+  --set server.image.pullPolicy=Never
 ```
 
 > **Note:** The `server.enabled=true` deploys the UI server. You can omit it if you only need the controller.
+
+> **Important:** The Helm chart defaults to `v<VERSION>` image tags (e.g., `v0.0.18`), but `make docker-build` tags images as `<VERSION>` (without `v` prefix) and `latest`. You must explicitly set `controller.image.tag=latest` and `server.image.tag=latest` to match the locally built images. Without this, pods will fail with `ErrImageNeverPull`.
 
 ### 5. Verify Deployment
 
@@ -320,8 +327,8 @@ kubectl get deployment -n test
 | ~~Secret~~ | ~~opencode-credentials~~ | Not needed for free model (see secrets.yaml.example for paid models) |
 | ServiceAccount | `kubeopencode-agent` | Agent service account |
 | Role/RoleBinding | `kubeopencode-agent` | RBAC permissions |
-| AgentTemplate | `local-dev-base` | Shared base configuration (images, credentials, workspace) |
-| Agent | `persistent-agent` | Persistent agent with session + workspace persistence |
+| AgentTemplate | `team-base` | Shared base configuration (images, credentials, workspace) |
+| Agent | `team-agent` | Persistent agent with session + workspace persistence |
 | Agent | `dev-agent` | Lightweight agent (no persistence, ephemeral storage) |
 
 ### Features Demonstrated
@@ -330,10 +337,10 @@ The local-dev resources showcase the following features:
 
 | Feature | Resource | Description |
 |---------|----------|-------------|
-| **AgentTemplate** | `local-dev-base` | Shared config inherited by both Agents via `templateRef` |
-| **Persistence** | `persistent-agent` | Persistent OpenCode server with session (1Gi) + workspace (5Gi) PVCs |
-| **Suspend/Resume** | `persistent-agent` | Can be suspended to save compute (see below) |
-| **Concurrency Control** | `persistent-agent` | Limited to 3 concurrent tasks |
+| **AgentTemplate** | `team-base` | Shared config inherited by both Agents via `templateRef` |
+| **Persistence** | `team-agent` | Persistent OpenCode server with session (1Gi) + workspace (5Gi) PVCs |
+| **Suspend/Resume** | `team-agent` | Can be suspended to save compute (see below) |
+| **Concurrency Control** | `team-agent` | Limited to 3 concurrent tasks |
 | **Minimal Agent** | `dev-agent` | Agent without persistence (uses ephemeral storage) |
 | **Agent Profile** | Both agents | Human-readable description for discovery |
 
@@ -349,7 +356,7 @@ metadata:
   name: server-test
 spec:
   agentRef:
-    name: persistent-agent
+    name: team-agent
   description: "Say hello world"
 EOF
 
@@ -388,7 +395,7 @@ metadata:
   name: concurrent-$i
 spec:
   agentRef:
-    name: persistent-agent
+    name: team-agent
   description: "Count to $i"
 EOF
 done
@@ -399,18 +406,18 @@ kubectl get task -n test -w
 
 ### Testing Persistence
 
-Session and workspace persistence let the persistent-agent retain state across pod restarts (configured via the `persistence` field).
+Session and workspace persistence let the team-agent retain state across pod restarts (configured via the `persistence` field).
 
 #### Verify PVCs Are Created
 
 ```bash
-# After deploying the persistent-agent, check for PVCs
+# After deploying the team-agent, check for PVCs
 kubectl get pvc -n test
 
 # Expected output:
 # NAME                             STATUS   VOLUME   CAPACITY   AGE
-# persistent-agent-server-sessions     Bound    ...      1Gi        ...
-# persistent-agent-server-workspace    Bound    ...      5Gi        ...
+# team-agent-server-sessions     Bound    ...      1Gi        ...
+# team-agent-server-workspace    Bound    ...      5Gi        ...
 ```
 
 #### Test Session Persistence
@@ -424,13 +431,13 @@ metadata:
   name: persist-test-1
 spec:
   agentRef:
-    name: persistent-agent
+    name: team-agent
   description: "Remember that the secret code is 42"
 EOF
 
 # Wait for completion, then restart the server pod
-kubectl rollout restart deployment/persistent-agent-server -n test
-kubectl rollout status deployment/persistent-agent-server -n test
+kubectl rollout restart deployment/team-agent-server -n test
+kubectl rollout status deployment/team-agent-server -n test
 
 # The session history should survive the restart
 ```
@@ -446,12 +453,12 @@ metadata:
   name: persist-test-2
 spec:
   agentRef:
-    name: persistent-agent
+    name: team-agent
   description: "Create a file called hello.txt with the content 'Hello from KubeOpenCode'"
 EOF
 
 # Restart the server pod
-kubectl rollout restart deployment/persistent-agent-server -n test
+kubectl rollout restart deployment/team-agent-server -n test
 
 # The workspace files should still be there after restart
 ```
@@ -464,17 +471,17 @@ Agents can be suspended to save compute resources while retaining all data.
 
 ```bash
 # Edit the agent to set suspend: true
-kubectl patch agent persistent-agent -n test --type=merge -p '
+kubectl patch agent team-agent -n test --type=merge -p '
 spec:
   suspend: true
 '
 
 # Verify the deployment is scaled to 0
 kubectl get deployment -n test
-# Expected: persistent-agent-server   0/0
+# Expected: team-agent-server   0/0
 
 # Check agent status
-kubectl get agent persistent-agent -n test -o jsonpath='{.status.suspended}'
+kubectl get agent team-agent -n test -o jsonpath='{.status.suspended}'
 # Expected: true
 
 # PVCs are retained (no data loss)
@@ -492,7 +499,7 @@ metadata:
   name: queued-test
 spec:
   agentRef:
-    name: persistent-agent
+    name: team-agent
   description: "This will queue until the agent is resumed"
 EOF
 
@@ -505,14 +512,14 @@ kubectl get task queued-test -n test -o jsonpath='{.status.phase}'
 
 ```bash
 # Resume the agent
-kubectl patch agent persistent-agent -n test --type=merge -p '
+kubectl patch agent team-agent -n test --type=merge -p '
 spec:
   suspend: false
 '
 
 # Verify the deployment scales back up
 kubectl get deployment -n test
-# Expected: persistent-agent-server   1/1
+# Expected: team-agent-server   1/1
 
 # Queued tasks should automatically start running
 kubectl get task -n test -w
@@ -520,16 +527,16 @@ kubectl get task -n test -w
 
 ### Testing AgentTemplate
 
-The `local-dev-base` AgentTemplate provides shared configuration for both agents.
+The `team-base` AgentTemplate provides shared configuration for both agents.
 
 #### View Template Configuration
 
 ```bash
 # View the template
-kubectl get agenttemplate local-dev-base -n test -o yaml
+kubectl get agenttemplate team-base -n test -o yaml
 
 # Check which agents reference this template
-kubectl get agent -n test -l kubeopencode.io/agent-template=local-dev-base
+kubectl get agent -n test -l kubeopencode.io/agent-template=team-base
 ```
 
 #### Verify Template Inheritance
@@ -537,7 +544,7 @@ kubectl get agent -n test -l kubeopencode.io/agent-template=local-dev-base
 ```bash
 # Both agents should have the label set by the controller
 kubectl get agent -n test --show-labels
-# Expected labels include: kubeopencode.io/agent-template=local-dev-base
+# Expected labels include: kubeopencode.io/agent-template=team-base
 ```
 
 ### Customization

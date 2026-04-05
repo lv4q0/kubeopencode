@@ -20,6 +20,5 @@ resources:
   - namespace.yaml
   - rbac.yaml
   - agenttemplate.yaml
-  - agent-persistent.yaml
-  - agent-dev.yaml
-  - agent-with-skills.yaml
+  - agent.yaml
+  - crontask.yaml
