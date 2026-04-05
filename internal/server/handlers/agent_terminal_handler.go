@@ -9,6 +9,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"sync"
 	"time"
 
@@ -30,6 +31,14 @@ import (
 // terminalIdleTimeout is the duration after which an idle terminal session is closed.
 // The timeout resets on each WebSocket read (user input).
 const terminalIdleTimeout = 30 * time.Minute
+
+// maxExecRetries is the number of times to retry a failed exec session.
+// This handles transient failures after agent resume (e.g., exit code 137 when
+// the server process is not yet fully initialized).
+const maxExecRetries = 3
+
+// execRetryDelay is the delay between exec retry attempts.
+const execRetryDelay = 2 * time.Second
 
 var termLog = ctrl.Log.WithName("terminal")
 
@@ -89,6 +98,9 @@ func (q *terminalSizeQueue) Next() *remotecommand.TerminalSize {
 
 // ServeTerminal upgrades the HTTP connection to WebSocket and bridges it to
 // a pod exec session running "opencode attach" in the agent's server pod.
+//
+// Includes automatic retry for transient exec failures (e.g., exit code 137)
+// that occur when the agent's server is not yet fully initialized after resume.
 func (h *AgentTerminalHandler) ServeTerminal(w http.ResponseWriter, r *http.Request) {
 	namespace := chi.URLParam(r, "namespace")
 	agentName := chi.URLParam(r, "name")
@@ -140,7 +152,7 @@ func (h *AgentTerminalHandler) ServeTerminal(w http.ResponseWriter, r *http.Requ
 		termLog.Error(err, "heartbeat: failed to patch annotation", "agent", agentName)
 	})
 
-	// Build the exec request using impersonated config
+	// Build the exec clientset using impersonated config
 	execClientset, err := kubernetes.NewForConfig(execConfig)
 	if err != nil {
 		termLog.Error(err, "failed to create impersonated clientset")
@@ -151,64 +163,32 @@ func (h *AgentTerminalHandler) ServeTerminal(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	attachURL := fmt.Sprintf("http://localhost:%d", port)
-	execReq := execClientset.CoreV1().RESTClient().Post().
-		Resource("pods").
-		Name(podName).
-		Namespace(namespace).
-		SubResource("exec").
-		VersionedParams(&corev1.PodExecOptions{
-			Container: containerName,
-			Command:   []string{"/tools/opencode", "attach", attachURL},
-			Stdin:     true,
-			Stdout:    true,
-			TTY:       true,
-		}, scheme.ParameterCodec)
+	// Single WebSocket reader goroutine that persists across exec retry attempts.
+	// Input and resize events are sent to channels, which per-attempt pump goroutines
+	// forward to the exec session's stdin pipe and terminal size queue.
+	inputCh := make(chan []byte, 16)
+	resizeCh := make(chan *remotecommand.TerminalSize, 1)
 
-	exec, err := remotecommand.NewSPDYExecutor(execConfig, "POST", execReq.URL())
-	if err != nil {
-		termLog.Error(err, "failed to create SPDY executor")
-		wsMu.Lock()
-		_ = ws.WriteMessage(websocket.CloseMessage,
-			websocket.FormatCloseMessage(websocket.CloseInternalServerErr, "exec failed"))
-		wsMu.Unlock()
-		return
-	}
-
-	// Set up terminal size queue
-	sizeQueue := &terminalSizeQueue{ch: make(chan *remotecommand.TerminalSize, 1)}
-
-	// Create pipe for stdin: WebSocket reader writes to pw, exec reads from pr
-	pr, pw := io.Pipe()
-
-	// Read from WebSocket, write to stdin pipe + send resize events.
-	// Set an idle timeout that resets on each message from the browser.
-	_ = ws.SetReadDeadline(time.Now().Add(terminalIdleTimeout))
-	var wg sync.WaitGroup
-	wg.Add(1)
 	go func() {
-		defer wg.Done()
-		defer func() { _ = pw.Close() }()
-		defer close(sizeQueue.ch)
-		defer sessionCancel() // Cancel session context when WebSocket disconnects
-
+		defer sessionCancel()
+		defer close(inputCh)
+		defer close(resizeCh)
+		_ = ws.SetReadDeadline(time.Now().Add(terminalIdleTimeout))
 		for {
 			msgType, data, err := ws.ReadMessage()
 			if err != nil {
 				return
 			}
-			// Reset idle timeout on every message from the client
 			_ = ws.SetReadDeadline(time.Now().Add(terminalIdleTimeout))
 
 			if msgType == websocket.TextMessage {
-				// Control message (resize)
 				var msg resizeMessage
 				if err := json.Unmarshal(data, &msg); err != nil {
 					continue
 				}
 				if msg.Type == "resize" && msg.Cols > 0 && msg.Rows > 0 {
 					select {
-					case sizeQueue.ch <- &remotecommand.TerminalSize{
+					case resizeCh <- &remotecommand.TerminalSize{
 						Width:  msg.Cols,
 						Height: msg.Rows,
 					}:
@@ -216,43 +196,133 @@ func (h *AgentTerminalHandler) ServeTerminal(w http.ResponseWriter, r *http.Requ
 					}
 				}
 			} else {
-				// Binary message: terminal input
-				if _, err := pw.Write(data); err != nil {
+				select {
+				case inputCh <- append([]byte(nil), data...):
+				case <-sessionCtx.Done():
 					return
 				}
 			}
 		}
 	}()
 
-	// stdout writer that forwards to WebSocket with mutex protection
 	wsWriter := &wsStdoutWriter{ws: ws, mu: &wsMu}
+	attachURL := fmt.Sprintf("http://localhost:%d", port)
 
-	// Execute the command - this blocks until the exec session ends
-	err = exec.StreamWithContext(sessionCtx, remotecommand.StreamOptions{
-		Stdin:             pr,
-		Stdout:            wsWriter,
-		Tty:               true,
-		TerminalSizeQueue: sizeQueue,
-	})
+	// Retry loop for transient exec failures (e.g., exit code 137 after agent resume)
+	var lastErr error
+	for attempt := 1; attempt <= maxExecRetries; attempt++ {
+		if sessionCtx.Err() != nil {
+			break
+		}
 
-	if err != nil {
-		termLog.Info("exec session ended", "error", err, "agent", agentName)
-		// Send error message to the terminal before closing
-		errMsg := fmt.Sprintf("\r\n\x1b[31mError: %s\x1b[0m\r\n", err.Error())
+		execReq := execClientset.CoreV1().RESTClient().Post().
+			Resource("pods").
+			Name(podName).
+			Namespace(namespace).
+			SubResource("exec").
+			VersionedParams(&corev1.PodExecOptions{
+				Container: containerName,
+				Command:   []string{"/tools/opencode", "attach", attachURL},
+				Stdin:     true,
+				Stdout:    true,
+				TTY:       true,
+			}, scheme.ParameterCodec)
+
+		executor, err := remotecommand.NewSPDYExecutor(execConfig, "POST", execReq.URL())
+		if err != nil {
+			termLog.Error(err, "failed to create SPDY executor")
+			lastErr = err
+			break
+		}
+
+		// Per-attempt pipe and size queue, with a cancel to stop the pump goroutine
+		pr, pw := io.Pipe()
+		sizeQueue := &terminalSizeQueue{ch: make(chan *remotecommand.TerminalSize, 1)}
+		attemptCtx, attemptCancel := context.WithCancel(sessionCtx)
+
+		// Pump goroutine: reads from shared channels, writes to per-attempt pipe
+		var pumpWg sync.WaitGroup
+		pumpWg.Add(1)
+		go func() {
+			defer pumpWg.Done()
+			defer func() { _ = pw.Close() }()
+			defer close(sizeQueue.ch)
+			for {
+				select {
+				case data, ok := <-inputCh:
+					if !ok {
+						return
+					}
+					if _, err := pw.Write(data); err != nil {
+						return
+					}
+				case size, ok := <-resizeCh:
+					if !ok {
+						return
+					}
+					select {
+					case sizeQueue.ch <- size:
+					default:
+					}
+				case <-attemptCtx.Done():
+					return
+				}
+			}
+		}()
+
+		lastErr = executor.StreamWithContext(attemptCtx, remotecommand.StreamOptions{
+			Stdin:             pr,
+			Stdout:            wsWriter,
+			Tty:               true,
+			TerminalSizeQueue: sizeQueue,
+		})
+
+		attemptCancel()
+		_ = pr.Close()
+		pumpWg.Wait()
+
+		if lastErr == nil || !isTransientExecError(lastErr) || attempt == maxExecRetries {
+			break
+		}
+
+		termLog.Info("transient exec failure, retrying",
+			"attempt", attempt, "error", lastErr, "agent", agentName)
+		wsMu.Lock()
+		retryMsg := fmt.Sprintf("\r\n\x1b[33mConnection interrupted, retrying (%d/%d)...\x1b[0m\r\n",
+			attempt, maxExecRetries)
+		_ = ws.WriteMessage(websocket.BinaryMessage, []byte(retryMsg))
+		wsMu.Unlock()
+
+		select {
+		case <-time.After(execRetryDelay):
+		case <-sessionCtx.Done():
+		}
+	}
+
+	if lastErr != nil {
+		termLog.Info("exec session ended", "error", lastErr, "agent", agentName)
+		errMsg := fmt.Sprintf("\r\n\x1b[31mError: %s\x1b[0m\r\n", lastErr.Error())
 		wsMu.Lock()
 		_ = ws.WriteMessage(websocket.BinaryMessage, []byte(errMsg))
 		_ = ws.WriteMessage(websocket.CloseMessage,
 			websocket.FormatCloseMessage(websocket.CloseInternalServerErr, "exec failed"))
 		wsMu.Unlock()
 	} else {
-		// Normal close
 		wsMu.Lock()
 		_ = ws.WriteMessage(websocket.CloseMessage,
 			websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 		wsMu.Unlock()
 	}
+}
 
-	wg.Wait()
+// isTransientExecError returns true if the exec error is transient and worth retrying.
+// Exit code 137 (SIGKILL) typically occurs when the server process is not yet fully
+// initialized after agent resume from standby.
+func isTransientExecError(err error) bool {
+	if err == nil {
+		return false
+	}
+	return strings.Contains(err.Error(), "exit code 137")
 }
 
 // wsStdoutWriter writes exec stdout to a WebSocket connection with mutex protection.

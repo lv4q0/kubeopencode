@@ -496,16 +496,32 @@ func BuildServerDeployment(agent *kubeopenv1alpha1.Agent, agentCfg agentConfig, 
 				Protocol:      corev1.ProtocolTCP,
 			},
 		},
+		// StartupProbe gates liveness and readiness probes until the server
+		// is fully initialized (e.g., session restore after resume from standby).
+		// Without this, the readiness probe may pass before the server can
+		// handle attach connections, causing "exit code 137" errors.
+		StartupProbe: &corev1.Probe{
+			ProbeHandler: corev1.ProbeHandler{
+				HTTPGet: &corev1.HTTPGetAction{
+					Path:   ServerHealthPath,
+					Port:   intstr.FromInt32(port),
+					Scheme: corev1.URISchemeHTTP,
+				},
+			},
+			InitialDelaySeconds: 2,
+			PeriodSeconds:       2,
+			TimeoutSeconds:      5,
+			FailureThreshold:    30, // 2 + 2*30 = 62s max startup time
+		},
 		LivenessProbe: &corev1.Probe{
 			ProbeHandler: corev1.ProbeHandler{
 				TCPSocket: &corev1.TCPSocketAction{
 					Port: intstr.FromInt32(port),
 				},
 			},
-			InitialDelaySeconds: 10,
-			PeriodSeconds:       30,
-			TimeoutSeconds:      5,
-			FailureThreshold:    3,
+			PeriodSeconds:    30,
+			TimeoutSeconds:   5,
+			FailureThreshold: 3,
 		},
 		ReadinessProbe: &corev1.Probe{
 			ProbeHandler: corev1.ProbeHandler{
@@ -515,10 +531,9 @@ func BuildServerDeployment(agent *kubeopenv1alpha1.Agent, agentCfg agentConfig, 
 					Scheme: corev1.URISchemeHTTP,
 				},
 			},
-			InitialDelaySeconds: 5,
-			PeriodSeconds:       10,
-			TimeoutSeconds:      5,
-			FailureThreshold:    3,
+			PeriodSeconds:    10,
+			TimeoutSeconds:   5,
+			FailureThreshold: 3,
 		},
 	}
 
