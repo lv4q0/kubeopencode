@@ -117,6 +117,22 @@ func runGitInit(cmd *cobra.Command, args []string) error {
 	gitDir := filepath.Join(targetDir, ".git")
 	if _, err := os.Stat(gitDir); err == nil {
 		fmt.Printf("git-init: Repository already exists at %s, skipping clone\n", targetDir)
+		// Log the current commit hash so operators can verify which version is in use
+		existingCommitCmd := exec.Command("git", "-C", targetDir, "rev-parse", "HEAD") //nolint:gosec // targetDir is constructed from controlled inputs
+		if existingCommitOutput, err := existingCommitCmd.Output(); err == nil {
+			fmt.Printf("  Current commit: %s\n", strings.TrimSpace(string(existingCommitOutput)))
+		}
+		// Also log the current branch/ref
+		existingRefCmd := exec.Command("git", "-C", targetDir, "symbolic-ref", "--short", "HEAD") //nolint:gosec // targetDir is constructed from controlled inputs
+		if existingRefOutput, err := existingRefCmd.Output(); err == nil {
+			fmt.Printf("  Current branch: %s\n", strings.TrimSpace(string(existingRefOutput)))
+		} else {
+			// Detached HEAD — show describe instead
+			descCmd := exec.Command("git", "-C", targetDir, "describe", "--always", "HEAD") //nolint:gosec // targetDir is constructed from controlled inputs
+			if descOutput, err := descCmd.Output(); err == nil {
+				fmt.Printf("  Current ref: %s (detached HEAD)\n", strings.TrimSpace(string(descOutput)))
+			}
+		}
 	} else {
 		// Check if submodule cloning is enabled
 		recurseSubmodules := os.Getenv(envGitRecurseSubmodules) == "true"
@@ -169,7 +185,7 @@ func runGitInit(cmd *cobra.Command, args []string) error {
 		fmt.Printf("git-init: Set write permissions for all users on %s\n", targetDir)
 	}
 
-	// Get and print commit hash
+	// Get and print commit hash and branch info
 	commitCmd := exec.Command("git", "-C", targetDir, "rev-parse", "HEAD") //nolint:gosec // targetDir is constructed from controlled inputs
 	commitOutput, err := commitCmd.Output()
 	if err != nil {
@@ -177,6 +193,11 @@ func runGitInit(cmd *cobra.Command, args []string) error {
 	} else {
 		fmt.Printf("git-init: Clone successful!\n")
 		fmt.Printf("  Commit: %s\n", strings.TrimSpace(string(commitOutput)))
+	}
+	// Log the branch/ref for easier debugging
+	branchCmd := exec.Command("git", "-C", targetDir, "symbolic-ref", "--short", "HEAD") //nolint:gosec // targetDir is constructed from controlled inputs
+	if branchOutput, err := branchCmd.Output(); err == nil {
+		fmt.Printf("  Branch: %s\n", strings.TrimSpace(string(branchOutput)))
 	}
 
 	// If GIT_WORKSPACE_DIR is set, merge cloned content into the workspace directory.

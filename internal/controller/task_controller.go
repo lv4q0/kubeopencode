@@ -821,6 +821,20 @@ func (r *TaskReconciler) processAllContexts(ctx context.Context, task *kubeopenv
 		}
 	}
 
+	// Log all resolved git contexts for debugging
+	logger := log.FromContext(ctx)
+	for _, gm := range gitMounts {
+		logger.Info("Resolved git context for Task",
+			"task", task.Name,
+			"context", gm.contextName,
+			"repository", gm.repository,
+			"ref", gm.ref,
+			"depth", gm.depth,
+			"mountPath", gm.mountPath,
+			"syncEnabled", gm.syncEnabled,
+		)
+	}
+
 	// Validate mount path conflicts
 	// Multiple contexts mounting to the same path would silently overwrite each other,
 	// so we detect and report conflicts explicitly.

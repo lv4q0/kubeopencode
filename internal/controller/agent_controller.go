@@ -352,6 +352,7 @@ func (r *AgentReconciler) updateAgentStatus(ctx context.Context, agent *kubeopen
 // processAgentContexts resolves Agent-level contexts into a ConfigMap, file mounts, dir mounts, and git mounts.
 // This is similar to TaskReconciler.processAllContexts but only handles Agent.contexts (no Task description).
 func (r *AgentReconciler) processAgentContexts(ctx context.Context, agent *kubeopenv1alpha1.Agent, cfg agentConfig) (*corev1.ConfigMap, []fileMount, []dirMount, []gitMount, error) {
+	logger := log.FromContext(ctx)
 	if len(cfg.contexts) == 0 && len(cfg.skills) == 0 && (cfg.config == nil || *cfg.config == "") {
 		return nil, nil, nil, nil, nil
 	}
@@ -388,6 +389,18 @@ func (r *AgentReconciler) processAgentContexts(ctx context.Context, agent *kubeo
 		return nil, nil, nil, nil, err
 	}
 	gitMounts = append(gitMounts, skillGitMounts...)
+
+	// Log all resolved git contexts for debugging
+	for _, gm := range gitMounts {
+		logger.Info("Resolved git context for Agent",
+			"context", gm.contextName,
+			"repository", gm.repository,
+			"ref", gm.ref,
+			"depth", gm.depth,
+			"mountPath", gm.mountPath,
+			"syncEnabled", gm.syncEnabled,
+		)
+	}
 
 	// Validate mount path conflicts
 	if err := validateMountPathConflicts(fileMounts, dirMounts, gitMounts); err != nil {
