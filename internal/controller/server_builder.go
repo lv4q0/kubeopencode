@@ -537,9 +537,11 @@ func BuildServerDeployment(agent *kubeopenv1alpha1.Agent, agentCfg agentConfig, 
 		},
 	}
 
-	// Apply resource requirements if specified in podSpec
+	// Apply resource requirements - use custom if provided, otherwise use defaults
 	if agentCfg.podSpec != nil && agentCfg.podSpec.Resources != nil {
 		container.Resources = *agentCfg.podSpec.Resources
+	} else {
+		container.Resources = defaultResources()
 	}
 
 	// Apply security context - use custom if provided, otherwise use restricted default

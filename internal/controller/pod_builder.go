@@ -13,6 +13,7 @@ import (
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	kubeopenv1alpha1 "github.com/kubeopencode/kubeopencode/api/v1alpha1"
@@ -272,6 +273,15 @@ const (
 	// This path is chosen to avoid conflicts with repository's AGENTS.md or CLAUDE.md files.
 	// OpenCode loads this file via the instructions config injected through OPENCODE_CONFIG_CONTENT.
 	ContextFileRelPath = ".kubeopencode/context.md"
+
+	// DefaultMemoryLimit is the default memory limit for agent containers.
+	// AI coding agents can consume unbounded memory during execution,
+	// which risks triggering system-level OOM and taking down the entire node.
+	// This default ensures OOM kills only the container, not the node.
+	DefaultMemoryLimit = "4Gi"
+
+	// DefaultMemoryRequest is the default memory request for agent containers.
+	DefaultMemoryRequest = "512Mi"
 
 	// DefaultSecretFileMode is the default permission mode for mounted secrets.
 	// 0600 gives read/write access to the owner only.
@@ -758,6 +768,20 @@ func buildProxyEnvVars(proxy *kubeopenv1alpha1.ProxyConfig) []corev1.EnvVar {
 	return envVars
 }
 
+// defaultResources returns the default resource requirements for agent containers.
+// This prevents unbounded memory growth from triggering node-level OOM.
+// Users can override via podSpec.resources in Agent or AgentTemplate spec.
+func defaultResources() corev1.ResourceRequirements {
+	return corev1.ResourceRequirements{
+		Requests: corev1.ResourceList{
+			corev1.ResourceMemory: resource.MustParse(DefaultMemoryRequest),
+		},
+		Limits: corev1.ResourceList{
+			corev1.ResourceMemory: resource.MustParse(DefaultMemoryLimit),
+		},
+	}
+}
+
 // defaultSecurityContext returns the default restricted security context for containers.
 // This enforces baseline Pod Security Standards:
 // - No privilege escalation
@@ -1175,6 +1199,13 @@ func buildPod(task *kubeopenv1alpha1.Task, podName string, cfg agentConfig, cont
 		VolumeMounts:    volumeMounts,
 	}
 
+	// Apply resource requirements - use custom if provided, otherwise use defaults
+	if cfg.podSpec != nil && cfg.podSpec.Resources != nil {
+		agentContainer.Resources = *cfg.podSpec.Resources
+	} else {
+		agentContainer.Resources = defaultResources()
+	}
+
 	// Apply security context - use custom if provided, otherwise use restricted default
 	if cfg.podSpec != nil && cfg.podSpec.SecurityContext != nil {
 		agentContainer.SecurityContext = cfg.podSpec.SecurityContext
@@ -1224,11 +1255,6 @@ func buildPod(task *kubeopenv1alpha1.Task, podName string, cfg agentConfig, cont
 		// Apply runtime class if specified (for gVisor, Kata, etc.)
 		if cfg.podSpec.RuntimeClassName != nil {
 			podSpec.RuntimeClassName = cfg.podSpec.RuntimeClassName
-		}
-
-		// Apply resource requirements if specified
-		if cfg.podSpec.Resources != nil {
-			podSpec.Containers[0].Resources = *cfg.podSpec.Resources
 		}
 
 		// Apply pod-level security context if specified
