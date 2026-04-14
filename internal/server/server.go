@@ -238,6 +238,9 @@ func (s *Server) setupRoutes() *chi.Mux {
 			r.Delete("/{name}", agentHandler.Delete)
 			r.Post("/{name}/suspend", agentHandler.Suspend)
 			r.Post("/{name}/resume", agentHandler.Resume)
+			r.Get("/{name}/share", agentHandler.GetShare)
+			r.Post("/{name}/share", agentHandler.UpdateShare)
+			r.Delete("/{name}/share", agentHandler.DeleteShare)
 
 			// Agent proxy - reverse proxy to OpenCode agent servers
 			// Supports HTTP REST and SSE streaming for opencode attach

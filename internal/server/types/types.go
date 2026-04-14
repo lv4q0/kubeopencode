@@ -354,6 +354,25 @@ type CreateAgentTemplateRequest struct {
 	ExecutorImage      string `json:"executorImage,omitempty"`
 }
 
+// ShareTokenResponse is returned by GET /agents/{name}/share with the actual token value
+type ShareTokenResponse struct {
+	Enabled    bool       `json:"enabled"`
+	Active     bool       `json:"active"`
+	Token      string     `json:"token,omitempty"`
+	Path       string     `json:"path,omitempty"`
+	ReadOnly   bool       `json:"readOnly"`
+	ExpiresAt  *time.Time `json:"expiresAt,omitempty"`
+	AllowedIPs []string   `json:"allowedIPs,omitempty"`
+}
+
+// UpdateShareRequest is the request body for POST /agents/{name}/share
+type UpdateShareRequest struct {
+	Enabled    bool     `json:"enabled"`
+	ReadOnly   bool     `json:"readOnly,omitempty"`
+	ExpiresIn  string   `json:"expiresIn,omitempty"` // Go duration string (e.g., "24h")
+	AllowedIPs []string `json:"allowedIPs,omitempty"`
+}
+
 // ShareInfoResponse represents agent info returned for share link pages
 type ShareInfoResponse struct {
 	AgentName string `json:"agentName"`
