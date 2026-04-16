@@ -270,6 +270,7 @@ export const handlers = [
       contextsCount: 0,
       credentialsCount: 0,
       skillsCount: 0,
+      pluginsCount: 0,
       createdAt: new Date().toISOString(),
       serverStatus: {
         deploymentName: `${agentName}-server`,
@@ -449,6 +450,7 @@ export const handlers = [
       contextsCount: 0,
       credentialsCount: 0,
       skillsCount: 0,
+      pluginsCount: 0,
       createdAt: new Date().toISOString(),
     };
     return HttpResponse.json(newTemplate, { status: 201 });

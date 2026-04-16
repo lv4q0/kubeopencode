@@ -15,6 +15,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/yaml"
 
@@ -275,8 +276,42 @@ func agentToResponse(agent *kubeopenv1alpha1.Agent) types.AgentResponse {
 	resp.Contexts = contextsToItems(agent.Spec.Contexts)
 	resp.SkillsCount = len(agent.Spec.Skills)
 	resp.Skills = skillsToInfo(agent.Spec.Skills)
+	resp.PluginsCount = len(agent.Spec.Plugins)
+	resp.Plugins = pluginsToInfo(agent.Spec.Plugins)
+	resp.Config = rawExtensionToMap(agent.Spec.Config)
 
 	return resp
+}
+
+// rawExtensionToMap converts a runtime.RawExtension to a map for clean JSON serialization.
+// runtime.RawExtension serializes as {"Raw":"base64..."} by default; this extracts
+// the actual JSON object so the API returns inline key-value pairs.
+func rawExtensionToMap(raw *runtime.RawExtension) map[string]interface{} {
+	if raw == nil || len(raw.Raw) == 0 {
+		return nil
+	}
+	var m map[string]interface{}
+	if err := json.Unmarshal(raw.Raw, &m); err != nil {
+		return nil
+	}
+	return m
+}
+
+// pluginsToInfo converts CRD PluginSpec slice to API PluginInfo slice.
+func pluginsToInfo(plugins []kubeopenv1alpha1.PluginSpec) []types.PluginInfo {
+	if len(plugins) == 0 {
+		return nil
+	}
+	result := make([]types.PluginInfo, 0, len(plugins))
+	for _, p := range plugins {
+		info := types.PluginInfo{
+			Name:    p.Name,
+			Target:  string(p.Target),
+			Options: rawExtensionToMap(p.Options),
+		}
+		result = append(result, info)
+	}
+	return result
 }
 
 // Create creates a new agent

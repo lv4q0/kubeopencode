@@ -157,6 +157,29 @@ describe('AgentDetailPage', () => {
     });
   });
 
+  it('shows plugins section when agent has plugins', async () => {
+    renderAgentDetailPage('default', 'opencode-agent');
+
+    await waitFor(() => {
+      expect(screen.getByText('Plugins (2)')).toBeInTheDocument();
+      expect(screen.getByText('@kubeopencode/opencode-slack-plugin')).toBeInTheDocument();
+      expect(screen.getByText('opencode-plugin-otel')).toBeInTheDocument();
+    });
+
+    // Check target badges are rendered
+    const serverBadges = screen.getAllByText('server');
+    expect(serverBadges.length).toBeGreaterThanOrEqual(2);
+  });
+
+  it('shows opencode config section when agent has config', async () => {
+    renderAgentDetailPage('default', 'opencode-agent');
+
+    await waitFor(() => {
+      expect(screen.getByText('OpenCode Config')).toBeInTheDocument();
+      expect(screen.getByText(/anthropic\/claude-sonnet/)).toBeInTheDocument();
+    });
+  });
+
   it('shows error state for nonexistent agent', async () => {
     renderAgentDetailPage('default', 'nonexistent-agent');
 

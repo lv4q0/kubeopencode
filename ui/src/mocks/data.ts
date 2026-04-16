@@ -268,6 +268,12 @@ export const mockAgents: Agent[] = [
     skills: [
       { name: 'official-skills', git: { repository: 'https://github.com/anthropics/skills.git', ref: 'main', path: 'skills/', names: ['frontend-design', 'webapp-testing'] } },
     ],
+    pluginsCount: 2,
+    plugins: [
+      { name: '@kubeopencode/opencode-slack-plugin', target: 'server' },
+      { name: 'opencode-plugin-otel', target: 'server', options: { endpoint: 'http://otel-collector:4318', verbose: true } },
+    ],
+    config: { model: 'anthropic/claude-sonnet-4-20250514', small_model: 'anthropic/claude-haiku-4-20250414', experimental: { hooks: true } },
     labels: { team: 'platform', tier: 'core', 'kubeopencode.io/agent-template': 'standard-base' },
   },
   {
@@ -281,6 +287,7 @@ export const mockAgents: Agent[] = [
     contextsCount: 1,
     credentialsCount: 3,
     skillsCount: 0,
+    pluginsCount: 0,
     maxConcurrentTasks: 2,
     createdAt: '2026-02-10T00:00:00Z',
     serverStatus: {
@@ -311,6 +318,7 @@ export const mockAgents: Agent[] = [
     contextsCount: 2,
     credentialsCount: 1,
     skillsCount: 0,
+    pluginsCount: 0,
     maxConcurrentTasks: 1,
     quota: { maxTaskStarts: 10, windowSeconds: 3600 },
     createdAt: '2026-02-15T00:00:00Z',
@@ -342,6 +350,7 @@ export const mockAgents: Agent[] = [
     contextsCount: 1,
     credentialsCount: 1,
     skillsCount: 0,
+    pluginsCount: 0,
     maxConcurrentTasks: 3,
     createdAt: '2026-03-01T00:00:00Z',
     serverStatus: {
@@ -375,6 +384,7 @@ export const mockAgents: Agent[] = [
     contextsCount: 0,
     credentialsCount: 1,
     skillsCount: 0,
+    pluginsCount: 0,
     createdAt: '2026-03-01T00:00:00Z',
     serverStatus: {
       deploymentName: 'pod-agent-server',
@@ -399,6 +409,7 @@ export const mockAgents: Agent[] = [
     contextsCount: 0,
     credentialsCount: 1,
     skillsCount: 0,
+    pluginsCount: 0,
     createdAt: '2026-02-20T00:00:00Z',
     serverStatus: {
       deploymentName: 'suspended-agent-server',
@@ -427,6 +438,7 @@ export const mockAgents: Agent[] = [
     contextsCount: 5,
     credentialsCount: 3,
     skillsCount: 0,
+    pluginsCount: 0,
     maxConcurrentTasks: 8,
     createdAt: '2026-01-10T00:00:00Z',
     serverStatus: {
@@ -461,6 +473,7 @@ export const mockAgents: Agent[] = [
     contextsCount: 2,
     credentialsCount: 2,
     skillsCount: 0,
+    pluginsCount: 0,
     maxConcurrentTasks: 3,
     createdAt: '2026-01-15T00:00:00Z',
     serverStatus: {
@@ -494,6 +507,11 @@ export const mockAgentTemplates: AgentTemplate[] = [
     contextsCount: 1,
     credentialsCount: 1,
     skillsCount: 0,
+    pluginsCount: 1,
+    plugins: [
+      { name: 'opencode-plugin-otel', target: 'server', options: { endpoint: 'http://otel-collector:4318' } },
+    ],
+    config: { model: 'anthropic/claude-sonnet-4-20250514' },
     credentials: [
       { name: 'anthropic-key', secretRef: 'ai-credentials', env: 'ANTHROPIC_API_KEY' },
     ],
@@ -514,6 +532,7 @@ export const mockAgentTemplates: AgentTemplate[] = [
     contextsCount: 0,
     credentialsCount: 1,
     skillsCount: 0,
+    pluginsCount: 0,
     credentials: [
       { name: 'anthropic-key', secretRef: 'opencode-credentials', env: 'ANTHROPIC_API_KEY' },
     ],
@@ -531,6 +550,7 @@ export const mockAgentTemplates: AgentTemplate[] = [
     contextsCount: 2,
     credentialsCount: 2,
     skillsCount: 0,
+    pluginsCount: 0,
     credentials: [
       { name: 'anthropic-key', secretRef: 'prod-ai-credentials', env: 'ANTHROPIC_API_KEY' },
       { name: 'github-token', secretRef: 'prod-github-creds', env: 'GITHUB_TOKEN' },

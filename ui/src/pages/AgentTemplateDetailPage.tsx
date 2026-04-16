@@ -238,6 +238,52 @@ function AgentTemplateDetailPage() {
             </div>
           )}
 
+          {/* Plugins */}
+          {tmpl.plugins && tmpl.plugins.length > 0 && (
+            <div>
+              <h3 className="text-xs font-display font-semibold text-stone-500 uppercase tracking-wider mb-3">
+                Plugins ({tmpl.plugins.length})
+              </h3>
+              <div className="space-y-2">
+                {tmpl.plugins.map((plugin, idx) => (
+                  <div key={idx} className="bg-stone-50 rounded-lg p-3 border border-stone-100">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-sm text-stone-800 font-mono">
+                        {plugin.name}
+                      </span>
+                      {plugin.target && (
+                        <span className={`text-[11px] px-2 py-0.5 rounded-md border font-medium ${
+                          plugin.target === 'tui'
+                            ? 'bg-amber-50 text-amber-600 border-amber-200'
+                            : 'bg-teal-50 text-teal-600 border-teal-200'
+                        }`}>
+                          {plugin.target}
+                        </span>
+                      )}
+                    </div>
+                    {plugin.options && Object.keys(plugin.options).length > 0 && (
+                      <pre className="mt-2 text-[11px] text-stone-500 font-mono bg-stone-100 rounded p-2 overflow-x-auto">
+                        {JSON.stringify(plugin.options, null, 2)}
+                      </pre>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* OpenCode Config */}
+          {tmpl.config && Object.keys(tmpl.config).length > 0 && (
+            <div>
+              <h3 className="text-xs font-display font-semibold text-stone-500 uppercase tracking-wider mb-3">
+                OpenCode Config
+              </h3>
+              <pre className="text-xs text-stone-600 font-mono bg-stone-50 rounded-lg p-4 border border-stone-100 overflow-x-auto">
+                {JSON.stringify(tmpl.config, null, 2)}
+              </pre>
+            </div>
+          )}
+
           {/* Contexts */}
           {tmpl.contexts && tmpl.contexts.length > 0 && (
             <div>

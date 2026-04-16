@@ -156,6 +156,12 @@ export interface SkillInfo {
   git?: SkillGitInfo;
 }
 
+export interface PluginInfo {
+  name: string;
+  target?: string;
+  options?: Record<string, unknown>;
+}
+
 export interface ShareStatusInfo {
   enabled: boolean;
   active: boolean;
@@ -192,11 +198,14 @@ export interface Agent {
   contextsCount: number;
   credentialsCount: number;
   skillsCount: number;
+  pluginsCount: number;
   maxConcurrentTasks?: number;
   quota?: QuotaInfo;
   credentials?: CredentialInfo[];
   contexts?: ContextItem[];
   skills?: SkillInfo[];
+  plugins?: PluginInfo[];
+  config?: Record<string, unknown>;
   createdAt: string;
   labels?: Record<string, string>;
   standby?: StandbyInfo;
@@ -215,9 +224,12 @@ export interface AgentTemplate {
   contextsCount: number;
   credentialsCount: number;
   skillsCount: number;
+  pluginsCount: number;
   credentials?: CredentialInfo[];
   contexts?: ContextItem[];
   skills?: SkillInfo[];
+  plugins?: PluginInfo[];
+  config?: Record<string, unknown>;
   createdAt: string;
   labels?: Record<string, string>;
   conditions?: Condition[];
