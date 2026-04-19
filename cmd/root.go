@@ -34,9 +34,10 @@ func Execute() {
 }
 
 func init() {
-	cob all subcommands
+	 persistent flags for all subcommands
 	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.kubeopencode. $HOME/.kube/config)")
-	rootCmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", "", "kubernetes namespace to use")
+	rootCmd.PersistentFlags().StringVar(&kubeconfig, "kubeconfig", "", "path to kubeconfig file (default is $HOME/.kube/config)")
+	rootCmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", "default", "kubernetes namespace to use")
 	rootCmd.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "enable verbose output")
 
 	// Bind flags to viper
