@@ -41,4 +41,5 @@ func printVersion() {
 	fmt.Printf("  Build date:  %s\n", BuildDate)
 	fmt.Printf("  Go version:  %s\n", runtime.Version())
 	fmt.Printf("  OS/Arch:     %s/%s\n", runtime.GOOS, runtime.GOARCH)
+	fmt.Printf("  NumCPU:      %d\n", runtime.NumCPU())
 }
