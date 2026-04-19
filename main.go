@@ -48,7 +48,8 @@ func main() {
 	flag.BoolVar(&printVersion, "version", false, "Print version information and exit.")
 
 	opts := zap.Options{
-		Development: true,
+		// Disable development mode in my local setup to get JSON structured logs.
+		Development: false,
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
