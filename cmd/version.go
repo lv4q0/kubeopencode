@@ -31,7 +31,7 @@ var versionCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(versionCmd)
-	versionCmd.Flags().BoolP("short", "s version number")
+	versionCmd.Flags().BoolP("short", "s", false, "Print version number only")
 }
 
 // printVersion outputs full version details to stdout
@@ -41,7 +41,6 @@ func printVersion() {
 	fmt.Printf("  Build date:  %s\n", BuildDate)
 	fmt.Printf("  Go version:  %s\n", runtime.Version())
 	fmt.Printf("  OS/Arch:     %s/%s\n", runtime.GOOS, runtime.GOARCH)
-	// NumCPU is interesting but not really version info; keeping it anyway
+	// NumCPU and NumGoroutine are not really version info, but handy for debugging
 	fmt.Printf("  NumCPU:      %d\n", runtime.NumCPU())
-	fmt.Printf("  NumGoroutine: %d\n", runtime.NumGoroutine())
 }
