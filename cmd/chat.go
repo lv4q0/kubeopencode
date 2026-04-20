@@ -34,7 +34,8 @@ func init() {
 	rootCmd.AddCommand(chatCmd)
 
 	chatCmd.Flags().StringVarP(&namespace, "namespace", "n", "", "Kubernetes namespace to scope queries (default: all namespaces)")
-	chatCmd.Flags().StringVarP(&model, "model", "m", "", "LLM model to use for chat (overrides config)")
+	// Default to gpt-4o-mini for a good balance of speed and cost during personal use
+	chatCmd.Flags().StringVarP(&model, "model", "m", "gpt-4o-mini", "LLM model to use for chat (overrides config)")
 }
 
 // runChat initializes and runs the interactive chat loop.
@@ -48,6 +49,7 @@ func runChat(cmd *cobra.Command, args []string) error {
 		fmt.Printf("Scoping queries to namespace: %s\n", namespace)
 	}
 
+	fmt.Printf("Using model: %s\n", model)
 	fmt.Println(strings.Repeat("-", 60))
 
 	scanner := bufio.NewScanner(os.Stdin)
