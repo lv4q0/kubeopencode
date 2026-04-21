@@ -67,7 +67,8 @@ func runChat(cmd *cobra.Command, args []string) error {
 			continue
 		}
 
-		if input == "exit" || input == "quit" || input == "q" {
+		// Also handle common shortcuts like :q (vim habit) and 'bye'
+		if input == "exit" || input == "quit" || input == "q" || input == ":q" || input == "bye" {
 			fmt.Println("Goodbye!")
 			break
 		}
