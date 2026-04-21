@@ -34,8 +34,8 @@ func init() {
 	rootCmd.AddCommand(chatCmd)
 
 	chatCmd.Flags().StringVarP(&namespace, "namespace", "n", "", "Kubernetes namespace to scope queries (default: all namespaces)")
-	// Default to gpt-4o-mini for a good balance of speed and cost during personal use
-	chatCmd.Flags().StringVarP(&model, "model", "m", "gpt-4o-mini", "LLM model to use for chat (overrides config)")
+	// Switched default to gpt-4o for better reasoning quality; cost is acceptable for my usage
+	chatCmd.Flags().StringVarP(&model, "model", "m", "gpt-4o", "LLM model to use for chat (overrides config)")
 }
 
 // runChat initializes and runs the interactive chat loop.
