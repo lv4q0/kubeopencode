@@ -47,6 +47,11 @@ func runChat(cmd *cobra.Command, args []string) error {
 
 	if namespace != "" {
 		fmt.Printf("Scoping queries to namespace: %s\n", namespace)
+	} else {
+		// Default to the 'default' namespace when none is specified, since I almost
+		// always work there and it avoids accidentally querying cluster-wide resources.
+		namespace = "default"
+		fmt.Println("No namespace specified, defaulting to: default")
 	}
 
 	fmt.Printf("Using model: %s\n", model)
